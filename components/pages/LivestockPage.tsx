@@ -1,88 +1,118 @@
-'use client'
-import { useState, useRef } from 'react'
-import Link from 'next/link'
-import TextType from '@/components/TextType'
-import ElectricBorder from '@/components/ElectricBorder'
+"use client";
+import { useState, useRef } from "react";
+import Link from "next/link";
+import TextType from "@/components/TextType";
+import ElectricBorder from "@/components/ElectricBorder";
+import ResourceFinder from "@/components/ResourceFinder";
 
 type LivestockResult = {
-  status: string
-  predicted_class: string
-  odia_name: string
-  confidence: number
-  severity: 'low' | 'moderate' | 'high' | string
-  advice_odia: string
-  home_remedy: string
-  see_vet_urgently: boolean
-  low_confidence: boolean
-}
+  status: string;
+  predicted_class: string;
+  odia_name: string;
+  confidence: number;
+  severity: "low" | "moderate" | "high" | string;
+  advice_odia: string;
+  home_remedy: string;
+  see_vet_urgently: boolean;
+  low_confidence: boolean;
+};
 
 const SEVERITY_COLOR: Record<string, string> = {
-  low: '#2d6a4f',
-  moderate: '#d97706',
-  high: '#dc2626',
-}
+  low: "#2d6a4f",
+  moderate: "#d97706",
+  high: "#dc2626",
+};
 const SEVERITY_BG: Record<string, string> = {
-  low: '#ecfdf5',
-  moderate: '#fffbeb',
-  high: '#fef2f2',
-}
+  low: "#ecfdf5",
+  moderate: "#fffbeb",
+  high: "#fef2f2",
+};
 const SEVERITY_BORDER: Record<string, string> = {
-  low: '#6ee7b7',
-  moderate: '#fcd34d',
-  high: '#fca5a5',
-}
+  low: "#6ee7b7",
+  moderate: "#fcd34d",
+  high: "#fca5a5",
+};
 
 export default function LivestockPage() {
-  const [result, setResult] = useState<LivestockResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [result, setResult] = useState<LivestockResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [showResourceFinder, setShowResourceFinder] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
-    setError(null)
-    setResult(null)
-    setPreview(URL.createObjectURL(file))
-    setLoading(true)
+    setError(null);
+    setResult(null);
+    setPreview(URL.createObjectURL(file));
+    setLoading(true);
 
     try {
-      const fd = new FormData()
-      fd.append('file', file)
+      const fd = new FormData();
+      fd.append("file", file);
 
-      const res = await fetch('/api/livestock', {
-        method: 'POST',
+      const res = await fetch("/api/livestock", {
+        method: "POST",
         body: fd,
-      })
+      });
 
       if (!res.ok) {
-        const txt = await res.text()
-        throw new Error(`Server error ${res.status}: ${txt}`)
+        const txt = await res.text();
+        throw new Error(`Server error ${res.status}: ${txt}`);
       }
 
-      const data: LivestockResult = await res.json()
+      const data: LivestockResult = await res.json();
 
-      if (data.status !== 'success') {
-        throw new Error('Diagnosis failed. Please try a clearer image.')
+      if (data.status !== "success") {
+        throw new Error("Diagnosis failed. Please try a clearer image.");
       }
 
-      setResult(data)
+      setResult(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    const file = e.dataTransfer.files?.[0]
-    if (file) handleFile(file)
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   }
 
-  const sev = result?.severity ?? 'low'
-  const sevColor = SEVERITY_COLOR[sev] ?? '#2d6a4f'
-  const sevBg = SEVERITY_BG[sev] ?? '#ecfdf5'
-  const sevBorder = SEVERITY_BORDER[sev] ?? '#6ee7b7'
+  function requestLocation() {
+    setLocationError(null);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setShowResourceFinder(true);
+        },
+        (err) => {
+          setLocationError(
+            "Unable to get your location. Please enable location services and try again.",
+          );
+          console.error(err);
+        },
+      );
+    } else {
+      setLocationError("Geolocation is not supported by your browser.");
+    }
+  }
+
+  const sev = result?.severity ?? "low";
+  const sevColor = SEVERITY_COLOR[sev] ?? "#2d6a4f";
+  const sevBg = SEVERITY_BG[sev] ?? "#ecfdf5";
+  const sevBorder = SEVERITY_BORDER[sev] ?? "#6ee7b7";
 
   return (
     <>
@@ -410,7 +440,6 @@ export default function LivestockPage() {
 
       <div className="bg-scene">
         <div className="page">
-
           {/* ── HERO ── */}
           <div className="hero">
             <div className="hero__eyebrow">
@@ -421,9 +450,9 @@ export default function LivestockPage() {
               <TextType
                 as="h1"
                 text={[
-                  'Livestock Health Monitor',
-                  'Early Disease Detection',
-                  'ପଶୁ ସ୍ୱାସ୍ଥ୍ୟ ନିରୀକ୍ଷଣ',
+                  "Livestock Health Monitor",
+                  "Early Disease Detection",
+                  "ପଶୁ ସ୍ୱାସ୍ଥ୍ୟ ନିରୀକ୍ଷଣ",
                 ]}
                 typingSpeed={55}
                 deletingSpeed={35}
@@ -450,7 +479,6 @@ export default function LivestockPage() {
 
           {/* ── TWO-COLUMN GRID ── */}
           <div className="main-grid">
-
             {/* ── LEFT: upload panel ── */}
             <div className="card upload-panel">
               <ElectricBorder
@@ -458,7 +486,7 @@ export default function LivestockPage() {
                 speed={0.8}
                 chaos={0.1}
                 borderRadius={14}
-                style={{ display: 'block', width: '100%' }}
+                style={{ display: "block", width: "100%" }}
               >
                 <div
                   className="dropzone"
@@ -470,15 +498,17 @@ export default function LivestockPage() {
                   <div className="dropzone__label">
                     Click or drag &amp; drop an animal photo
                   </div>
-                  <div className="dropzone__sub">JPG, PNG, WEBP — max 10 MB</div>
+                  <div className="dropzone__sub">
+                    JPG, PNG, WEBP — max 10 MB
+                  </div>
                   <input
                     ref={fileRef}
                     type="file"
                     accept="image/*"
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                     onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) handleFile(f)
+                      const f = e.target.files?.[0];
+                      if (f) handleFile(f);
                     }}
                   />
                 </div>
@@ -507,7 +537,7 @@ export default function LivestockPage() {
                   <div className="result__header">
                     <div>
                       <div className="result__name">
-                        {result.predicted_class.replace(/_/g, ' ')}
+                        {result.predicted_class.replace(/_/g, " ")}
                       </div>
                       <div className="result__odia">{result.odia_name}</div>
                     </div>
@@ -520,14 +550,23 @@ export default function LivestockPage() {
                     <div className="badge-row">
                       <span
                         className="badge"
-                        style={{ color: sevColor, background: sevBg, borderColor: sevBorder }}
+                        style={{
+                          color: sevColor,
+                          background: sevBg,
+                          borderColor: sevBorder,
+                        }}
                       >
-                        🌡 Severity: {sev.charAt(0).toUpperCase() + sev.slice(1)}
+                        🌡 Severity:{" "}
+                        {sev.charAt(0).toUpperCase() + sev.slice(1)}
                       </span>
                       {result.see_vet_urgently && (
                         <span
                           className="badge"
-                          style={{ color: '#b91c1c', background: '#fef2f2', borderColor: '#fca5a5' }}
+                          style={{
+                            color: "#b91c1c",
+                            background: "#fef2f2",
+                            borderColor: "#fca5a5",
+                          }}
                         >
                           🚨 Urgent Vet Visit
                         </span>
@@ -535,25 +574,90 @@ export default function LivestockPage() {
                     </div>
 
                     {result.see_vet_urgently && (
-                      <div className="vet-warning">
-                        🚨 <span>This animal needs urgent veterinary attention. Contact a vet immediately.</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.75rem",
+                        }}
+                      >
+                        <div className="vet-warning">
+                          🚨{" "}
+                          <span>
+                            This animal needs urgent veterinary attention.
+                            Contact a vet immediately.
+                          </span>
+                        </div>
+                        <button
+                          onClick={requestLocation}
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "10px",
+                            padding: "0.75rem 1.2rem",
+                            fontWeight: 600,
+                            fontSize: "0.95rem",
+                            cursor: "pointer",
+                            transition: "all 0.3s",
+                            width: "100%",
+                            boxShadow: "0 4px 12px rgba(220,38,38,0.3)",
+                          }}
+                          onMouseOver={(e) => {
+                            (e.target as HTMLButtonElement).style.transform =
+                              "translateY(-2px)";
+                            (e.target as HTMLButtonElement).style.boxShadow =
+                              "0 6px 16px rgba(220,38,38,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            (e.target as HTMLButtonElement).style.transform =
+                              "translateY(0)";
+                            (e.target as HTMLButtonElement).style.boxShadow =
+                              "0 4px 12px rgba(220,38,38,0.3)";
+                          }}
+                        >
+                          🗺️ Find Nearest Veterinarian
+                        </button>
+                        {locationError && (
+                          <div
+                            style={{
+                              background: "#fef2f2",
+                              border: "1px solid #fca5a5",
+                              borderRadius: "10px",
+                              padding: "0.75rem",
+                              fontSize: "0.85rem",
+                              color: "#b91c1c",
+                            }}
+                          >
+                            {locationError}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {result.low_confidence && (
                       <div className="low-conf-note">
-                        ⚠️ <span>Low confidence — try a clearer, better-lit photo for more accurate results.</span>
+                        ⚠️{" "}
+                        <span>
+                          Low confidence — try a clearer, better-lit photo for
+                          more accurate results.
+                        </span>
                       </div>
                     )}
 
                     <div>
-                      <div className="section-label">Treatment Advice (ଓଡ଼ିଆ)</div>
+                      <div className="section-label">
+                        Treatment Advice (ଓଡ଼ିଆ)
+                      </div>
                       <div className="info-box">{result.advice_odia}</div>
                     </div>
 
                     {result.home_remedy && (
                       <div>
-                        <div className="section-label">Home Remedy (ଘରୋଇ ଉପଚାର)</div>
+                        <div className="section-label">
+                          Home Remedy (ଘରୋଇ ଉପଚାର)
+                        </div>
                         <div className="info-box">{result.home_remedy}</div>
                       </div>
                     )}
@@ -569,10 +673,53 @@ export default function LivestockPage() {
                 </div>
               )
             )}
+          </div>
+          {/* end main-grid */}
 
-          </div>{/* end main-grid */}
+          {/* Resource Finder Modal */}
+          {showResourceFinder && userLocation && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: "1rem",
+                animation: "fadeIn 0.2s ease-out",
+              }}
+              onClick={() => setShowResourceFinder(false)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  maxWidth: "600px",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                }}
+              >
+                <ResourceFinder
+                  latitude={userLocation.latitude}
+                  longitude={userLocation.longitude}
+                  resourceType="vet"
+                  onClose={() => setShowResourceFinder(false)}
+                  farmName="Your Farm"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </>
-  )
+  );
 }
