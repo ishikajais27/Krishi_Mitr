@@ -49,35 +49,28 @@ const SYSTEM_PROMPT = `You are Mitra — a warm, caring mental wellness companio
 
   START: Begin with a warm greeting and ask how their day was. Keep it very natural.`
 
-async function callGroq(
+async function callGemini(
   history: { role: string; parts: { text: string }[] }[],
 ): Promise<string> {
-  const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
   if (!apiKey)
-    return 'API key nahi mili. .env mein NEXT_PUBLIC_GROQ_API_KEY set karo.'
+    return 'API key nahi mili. .env mein NEXT_PUBLIC_GEMINI_API_KEY set karo.'
 
-  // Convert Gemini-style history to OpenAI-style messages
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history.map((h) => ({
-      role: h.role === 'model' ? 'assistant' : 'user',
-      content: h.parts.map((p) => p.text).join(''),
-    })),
-  ]
-
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: history,
+        generationConfig: {
+          temperature: 0.88,
+          maxOutputTokens: 300,
+        },
+      }),
     },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages,
-      temperature: 0.88,
-      max_tokens: 300,
-    }),
-  })
+  )
 
   if (!res.ok) {
     if (res.status === 429)
@@ -86,7 +79,7 @@ async function callGroq(
   }
   const data = await res.json()
   return (
-    data.choices?.[0]?.message?.content ??
+    data.candidates?.[0]?.content?.parts?.[0]?.text ??
     'Kuch samajh nahi aaya, dobara bolna.'
   )
 }
@@ -288,7 +281,7 @@ export default function MindPulsePage() {
   async function startChat() {
     setStarted(true)
     setLoading(true)
-    const greeting = await callGroq([])
+    const greeting = await callGemini([])
     const id = uid()
     geminiHistory.current = [{ role: 'model', parts: [{ text: greeting }] }]
     addMsg({ id, from: 'bot', type: 'text', text: greeting, time: nowStr() })
@@ -315,7 +308,7 @@ export default function MindPulsePage() {
     ]
 
     setLoading(true)
-    const reply = await callGroq(geminiHistory.current)
+    const reply = await callGemini(geminiHistory.current)
     geminiHistory.current = [
       ...geminiHistory.current,
       { role: 'model', parts: [{ text: reply }] },
@@ -352,7 +345,7 @@ export default function MindPulsePage() {
     ]
 
     setLoading(true)
-    const reply = await callGroq(geminiHistory.current)
+    const reply = await callGemini(geminiHistory.current)
     geminiHistory.current = [
       ...geminiHistory.current,
       { role: 'model', parts: [{ text: reply }] },
