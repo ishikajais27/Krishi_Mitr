@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import clientPromise from '@/lib/mongodb'
-
-const DB_NAME = process.env.MONGODB_DB || 'krishimitra'
+import { adminDb } from '@/lib/firebase-admin'
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Parse body
     let body: { username?: string; password?: string }
     try {
       body = await req.json()
@@ -18,50 +14,53 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password } = body
-
-    if (!username || !password) {
+    if (!username || !password)
       return NextResponse.json(
-        { error: 'Phone number and password are required.' },
+        { error: 'Phone and password are required.' },
         { status: 400 },
       )
+
+    const email = `${username.trim()}@krishimitr.app`
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
+    const signInRes = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true }),
+      },
+    )
+
+    if (!signInRes.ok) {
+      const err = await signInRes.json()
+      const code = err?.error?.message
+      if (code === 'EMAIL_NOT_FOUND' || code === 'INVALID_EMAIL')
+        return NextResponse.json(
+          { error: 'No account found with this phone number.' },
+          { status: 401 },
+        )
+      if (code === 'INVALID_PASSWORD' || code === 'INVALID_LOGIN_CREDENTIALS')
+        return NextResponse.json(
+          { error: 'Wrong password. Please try again.' },
+          { status: 401 },
+        )
+      return NextResponse.json({ error: 'Login failed.' }, { status: 401 })
     }
 
-    // 2. Connect
-    const mongo = await clientPromise
-    const db = mongo.db(DB_NAME)
-    const users = db.collection('users')
+    const firebaseData = await signInRes.json()
+    const uid = firebaseData.localId
 
-    // 3. Find user by phone (stored as username) or phone field
-    const trimmed = username.trim()
-    const user = await users.findOne({
-      $or: [{ username: trimmed }, { phone: trimmed }],
-    })
+    const userDoc = await adminDb.collection('users').doc(uid).get()
+    const userData = userDoc.data()
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'No account found with this phone number.' },
-        { status: 401 },
-      )
-    }
-
-    // 4. Verify password
-    const match = await bcrypt.compare(password, user.password)
-    if (!match) {
-      return NextResponse.json(
-        { error: 'Wrong password. Please try again.' },
-        { status: 401 },
-      )
-    }
-
-    // 5. Return safe user data
     return NextResponse.json({
       message: 'Login successful.',
       user: {
-        id: user._id.toString(),
-        name: user.name,
-        username: user.username,
-        phone: user.phone,
-        district: user.district,
+        id: uid,
+        name: userData?.name ?? '',
+        phone: userData?.phone ?? username.trim(),
+        district: userData?.district ?? '',
       },
     })
   } catch (err: unknown) {
