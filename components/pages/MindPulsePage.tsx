@@ -60,7 +60,7 @@ async function callGemini(
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
   if (!apiKey) return 'API key nahi mili.'
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,12 +155,7 @@ function AudioBubble({
   onStop: () => void
 }) {
   const isPlaying = playingId === msg.id
-  const isPaused = pausedId === msg.id
   const dur = msg.audioDuration ?? Math.max(3, Math.ceil(msg.text.length / 12))
-  function handleBtn() {
-    if (isPlaying) onPause(msg.id)
-    else onPlay(msg.id, msg.text)
-  }
   return (
     <div
       style={{
@@ -170,20 +165,20 @@ function AudioBubble({
         padding: '0.6rem 0.85rem',
         borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
         background: isUser ? '#d9fdd3' : '#fff',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.09)',
-        minWidth: 200,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        minWidth: 180,
       }}
     >
       <button
-        onClick={handleBtn}
+        onClick={() => (isPlaying ? onPause(msg.id) : onPlay(msg.id, msg.text))}
         style={{
-          width: 38,
-          height: 38,
+          width: 36,
+          height: 36,
           borderRadius: '50%',
           background: '#2d6a4f',
           border: 'none',
           color: '#fff',
-          fontSize: '1rem',
+          fontSize: '0.9rem',
           cursor: 'pointer',
           flexShrink: 0,
           display: 'flex',
@@ -196,7 +191,7 @@ function AudioBubble({
       <Waveform playing={isPlaying} />
       <span
         style={{
-          fontSize: '0.75rem',
+          fontSize: '0.72rem',
           color: '#6b7c6b',
           marginLeft: 'auto',
           flexShrink: 0,
@@ -246,7 +241,6 @@ export default function MindPulsePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
-
   useEffect(() => {
     if (!user?.id) return
     loadSessions()
@@ -262,7 +256,6 @@ export default function MindPulsePage() {
     } catch {}
     setSessionsLoading(false)
   }
-
   async function cleanupExpired() {
     try {
       await fetch('/api/chats/cleanup', {
@@ -271,7 +264,6 @@ export default function MindPulsePage() {
       })
     } catch {}
   }
-
   async function saveMessages(chatId: string, msgs: Message[]) {
     try {
       await fetch('/api/chats/messages', {
@@ -281,7 +273,6 @@ export default function MindPulsePage() {
       })
     } catch {}
   }
-
   async function openSession(session: ChatSession) {
     setActiveChatId(session.id)
     setMessages(session.messages || [])
@@ -292,7 +283,6 @@ export default function MindPulsePage() {
     setStarted(true)
     setSidebarOpen(false)
   }
-
   async function deleteSession(id: string) {
     await fetch('/api/chats', {
       method: 'DELETE',
@@ -307,7 +297,6 @@ export default function MindPulsePage() {
       geminiHistory.current = []
     }
   }
-
   function handlePlay(id: string, text: string) {
     ttsStop()
     setPlayingId(id)
@@ -334,10 +323,10 @@ export default function MindPulsePage() {
     setResourceFinderType(type)
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        (pos) => {
           setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
           })
           setShowResourceFinder(true)
         },
@@ -364,7 +353,6 @@ export default function MindPulsePage() {
       time: nowStr(),
     }
     geminiHistory.current = [{ role: 'model', parts: [{ text: greeting }] }]
-
     const res = await fetch('/api/chats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-uid': user.id },
@@ -479,7 +467,6 @@ export default function MindPulsePage() {
     }
     rec.start()
   }
-
   function stopMic() {
     recRef.current?.stop()
     if (recTimer.current) clearInterval(recTimer.current)
@@ -491,9 +478,10 @@ export default function MindPulsePage() {
       style={{
         height: '100dvh',
         display: 'flex',
-        background: '#ece5dd',
+        flexDirection: 'column',
+        background: '#f0f4f0',
         fontFamily: "'Segoe UI', system-ui, sans-serif",
-        maxWidth: 560,
+        maxWidth: 480,
         margin: '0 auto',
         position: 'relative',
         overflow: 'hidden',
@@ -506,70 +494,88 @@ export default function MindPulsePage() {
           top: 0,
           left: 0,
           bottom: 0,
-          width: 280,
+          width: 272,
           background: '#1b4332',
           color: '#fff',
           zIndex: 50,
           transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.3s ease',
+          transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: sidebarOpen ? '4px 0 20px rgba(0,0,0,0.3)' : 'none',
+          boxShadow: sidebarOpen ? '6px 0 24px rgba(0,0,0,0.25)' : 'none',
         }}
       >
         <div
           style={{
-            padding: '1rem',
-            borderBottom: '1px solid #2d5a45',
+            padding: '1rem 1rem 0.75rem',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
-          <span style={{ fontWeight: 800, fontSize: '1rem' }}>
-            🧠 Purani Baatein
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              letterSpacing: '0.02em',
+            }}
+          >
+            💬 Purani Baatein
           </span>
           <button
             onClick={() => setSidebarOpen(false)}
             style={{
-              background: 'none',
+              background: 'rgba(255,255,255,0.1)',
               border: 'none',
               color: '#fff',
-              fontSize: '1.2rem',
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
               cursor: 'pointer',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             ✕
           </button>
         </div>
-        <button
-          onClick={() => {
-            setSidebarOpen(false)
-            setStarted(false)
-            setActiveChatId(null)
-            setMessages([])
-            geminiHistory.current = []
-          }}
-          style={{
-            margin: '0.75rem',
-            padding: '0.65rem',
-            background: '#2d6a4f',
-            border: 'none',
-            borderRadius: 10,
-            color: '#fff',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-          }}
-        >
-          + Naya Baat
-        </button>
+        <div style={{ padding: '0.75rem' }}>
+          <button
+            onClick={() => {
+              setSidebarOpen(false)
+              setStarted(false)
+              setActiveChatId(null)
+              setMessages([])
+              geminiHistory.current = []
+            }}
+            style={{
+              width: '100%',
+              padding: '0.6rem',
+              background: '#2d6a4f',
+              border: 'none',
+              borderRadius: 10,
+              color: '#fff',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            + Naya Baat
+          </button>
+        </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 0.5rem' }}>
           {sessionsLoading ? (
             <p
               style={{
                 textAlign: 'center',
-                color: '#9ca3af',
+                color: 'rgba(255,255,255,0.4)',
                 fontSize: '0.8rem',
                 marginTop: '1rem',
               }}
@@ -580,7 +586,7 @@ export default function MindPulsePage() {
             <p
               style={{
                 textAlign: 'center',
-                color: '#9ca3af',
+                color: 'rgba(255,255,255,0.4)',
                 fontSize: '0.8rem',
                 marginTop: '1rem',
               }}
@@ -594,12 +600,16 @@ export default function MindPulsePage() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.6rem 0.5rem',
+                  gap: '0.4rem',
+                  padding: '0.55rem 0.5rem',
                   borderRadius: 8,
-                  marginBottom: 4,
-                  background: activeChatId === s.id ? '#2d6a4f' : 'transparent',
+                  marginBottom: 3,
+                  background:
+                    activeChatId === s.id
+                      ? 'rgba(255,255,255,0.12)'
+                      : 'transparent',
                   cursor: 'pointer',
+                  transition: 'background 0.2s',
                 }}
               >
                 <div
@@ -608,7 +618,7 @@ export default function MindPulsePage() {
                 >
                   <div
                     style={{
-                      fontSize: '0.85rem',
+                      fontSize: '0.83rem',
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -617,8 +627,14 @@ export default function MindPulsePage() {
                   >
                     {s.title}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
-                    {s.messages?.length || 0} messages · 10 din mein delete
+                  <div
+                    style={{
+                      fontSize: '0.68rem',
+                      color: 'rgba(255,255,255,0.45)',
+                      marginTop: 1,
+                    }}
+                  >
+                    {s.messages?.length || 0} messages · 10 din
                   </div>
                 </div>
                 <button
@@ -628,8 +644,11 @@ export default function MindPulsePage() {
                     border: 'none',
                     color: '#f87171',
                     cursor: 'pointer',
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     flexShrink: 0,
+                    padding: '4px',
+                    borderRadius: 4,
+                    opacity: 0.7,
                   }}
                 >
                   🗑
@@ -640,14 +659,14 @@ export default function MindPulsePage() {
         </div>
         <div
           style={{
-            padding: '0.75rem',
-            borderTop: '1px solid #2d5a45',
-            fontSize: '0.7rem',
-            color: '#9ca3af',
+            padding: '0.6rem 0.75rem',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            fontSize: '0.68rem',
+            color: 'rgba(255,255,255,0.35)',
             textAlign: 'center',
           }}
         >
-          Chats 10 din baad automatically delete ho jaate hain
+          Chats 10 din baad auto-delete ho jaate hain
         </div>
       </div>
 
@@ -657,304 +676,561 @@ export default function MindPulsePage() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.35)',
             zIndex: 40,
           }}
         />
       )}
 
-      {/* MAIN */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-        }}
-      >
-        {/* HEADER */}
-        <div style={S.header}>
-          <button
-            onClick={() => setSidebarOpen(true)}
+      {/* HEADER */}
+      <div style={S.header}>
+        <button
+          onClick={() => setSidebarOpen(true)}
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            border: 'none',
+            color: '#fff',
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          ☰
+        </button>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div
             style={{
-              background: 'none',
-              border: 'none',
-              color: '#fff',
-              fontSize: '1.3rem',
-              cursor: 'pointer',
-              padding: 0,
+              width: 42,
+              height: 42,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
             }}
           >
-            ☰
-          </button>
-          <div style={S.avatarWrap}>
-            <div style={S.avatarCircle}>🧠</div>
-            {(loading || listening) && <span style={S.onlineDot} />}
+            🧠
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={S.botName}>Mitra Bot</div>
-            <div style={S.botStatus}>
-              {listening
-                ? `🔴 Recording... ${recSeconds}s`
-                : loading
-                  ? '✍️ Likh raha hoon...'
-                  : 'Aapka mann ka dost ❤️'}
-            </div>
-          </div>
-          <div style={S.freeBadge}>FREE</div>
-        </div>
-
-        {/* CHAT AREA */}
-        <div style={S.chatArea}>
-          {!started && (
-            <div style={S.introCard}>
-              <div style={{ fontSize: '3.2rem' }}>🌿</div>
-              <h2 style={S.introTitle}>Mitra Bot</h2>
-              <p style={S.introText}>
-                Main aapka dost hoon — ek aisa insaan jise aap kuch bhi bol
-                sakte ho.
-                <br />
-                <br />
-                Koi judge nahi karega. Koi doctor nahi. Bas sunne wala ek dost.
-                🙏
-              </p>
-              <div style={S.pillRow}>
-                <span style={S.pill}>🎤 Bolo ya likho</span>
-                <span style={S.pill}>🔊 Tap karke suno</span>
-                <span style={S.pill}>🔒 Private</span>
-              </div>
-              <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: 0 }}>
-                Hindi • English • Odia — koi bhi bhasha chalegi
-              </p>
-              <button style={S.startBtn} onClick={startChat}>
-                Baat Karo Mitra Se 👉
-              </button>
-            </div>
+          {(loading || listening) && (
+            <span
+              style={{
+                position: 'absolute',
+                bottom: 1,
+                right: 1,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#4ade80',
+                border: '2px solid #2d6a4f',
+                animation: 'pulse 1.5s infinite',
+              }}
+            />
           )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fff' }}>
+            Mitra Bot
+          </div>
+          <div
+            style={{
+              fontSize: '0.7rem',
+              color: 'rgba(255,255,255,0.75)',
+              marginTop: 1,
+            }}
+          >
+            {listening
+              ? `🔴 Recording... ${recSeconds}s`
+              : loading
+                ? '✍️ Likh raha hoon...'
+                : 'Aapka mann ka dost ❤️'}
+          </div>
+        </div>
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '0.18rem 0.5rem',
+            borderRadius: 20,
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            color: '#fff',
+            letterSpacing: '0.06em',
+            flexShrink: 0,
+          }}
+        >
+          FREE
+        </div>
+      </div>
 
-          {started && (
+      {/* CHAT AREA */}
+      <div style={S.chatArea}>
+        {!started && (
+          <div style={S.introCard}>
+            <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🌿</div>
+            <div style={{ textAlign: 'center' }}>
+              <h2
+                style={{
+                  fontSize: '1.45rem',
+                  fontWeight: 800,
+                  color: '#1b4332',
+                  margin: '0 0 0.5rem',
+                }}
+              >
+                Mitra Bot
+              </h2>
+              <p
+                style={{
+                  fontSize: '0.9rem',
+                  color: '#4b5563',
+                  lineHeight: 1.65,
+                  margin: 0,
+                }}
+              >
+                Main aapka dost hoon — kuch bhi bol sakte ho.
+                <br />
+                Koi judge nahi karega. Bas ek sunne wala dost. 🙏
+              </p>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.45rem',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}
+            >
+              {['🎤 Bolo ya likho', '🔊 Suno', '🔒 Private'].map((p) => (
+                <span
+                  key={p}
+                  style={{
+                    background: '#f0faf4',
+                    border: '1px solid #c8e6d0',
+                    borderRadius: 99,
+                    padding: '0.28rem 0.7rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: '#2d6a4f',
+                  }}
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: 0 }}>
+              Hindi • English • Odia — koi bhi bhasha chalegi
+            </p>
             <div
               style={{
                 width: '100%',
-                padding: '0.8rem 0',
+                borderTop: '1px solid #e8f0e8',
+                paddingTop: '1rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.6rem',
-                borderBottom: '1px solid #dde5d8',
+                gap: '0.5rem',
               }}
             >
               <p
                 style={{
-                  fontSize: '0.75rem',
-                  color: '#6b7c6b',
+                  fontSize: '0.72rem',
+                  color: '#9ca3af',
+                  margin: '0 0 0.25rem',
+                  textAlign: 'center',
                   fontWeight: 600,
-                  margin: 0,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                 }}
               >
-                🚀 Quick Actions
+                Quick Resources
               </p>
-              <button
-                onClick={() => requestLocationForResource('vet')}
-                style={{
-                  ...S.quickActionBtn,
-                  background: '#fff',
-                  border: '1px solid #6ee7b7',
-                  color: '#2d6a4f',
-                }}
-              >
-                🐄 Find Nearest Vet
-              </button>
-              <button
-                onClick={() => requestLocationForResource('agri_input')}
-                style={{
-                  ...S.quickActionBtn,
-                  background: '#fff',
-                  border: '1px solid #fcd34d',
-                  color: '#78350f',
-                }}
-              >
-                🌾 Find Agri Input Shop
-              </button>
-              <button
-                onClick={() => requestLocationForResource('crop_storage')}
-                style={{
-                  ...S.quickActionBtn,
-                  background: '#fff',
-                  border: '1px solid #a78bfa',
-                  color: '#5b21b6',
-                }}
-              >
-                📦 Find Crop Storage
-              </button>
-            </div>
-          )}
-
-          {messages.map((msg) => {
-            const isUser = msg.from === 'user'
-            return (
               <div
-                key={msg.id}
                 style={{
-                  ...S.msgRow,
-                  justifyContent: isUser ? 'flex-end' : 'flex-start',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '0.5rem',
                 }}
               >
-                {!isUser && <div style={S.msgAvatar}>🧠</div>}
+                {[
+                  {
+                    label: '🐄 Vet',
+                    type: 'vet' as const,
+                    color: '#d1fae5',
+                    border: '#6ee7b7',
+                    text: '#065f46',
+                  },
+                  {
+                    label: '🌾 Agri',
+                    type: 'agri_input' as const,
+                    color: '#fef3c7',
+                    border: '#fcd34d',
+                    text: '#78350f',
+                  },
+                  {
+                    label: '📦 Store',
+                    type: 'crop_storage' as const,
+                    color: '#ede9fe',
+                    border: '#a78bfa',
+                    text: '#5b21b6',
+                  },
+                ].map((btn) => (
+                  <button
+                    key={btn.type}
+                    onClick={() => requestLocationForResource(btn.type)}
+                    style={{
+                      padding: '0.55rem 0.3rem',
+                      borderRadius: 10,
+                      background: btn.color,
+                      border: `1.5px solid ${btn.border}`,
+                      color: btn.text,
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button style={S.startBtn} onClick={startChat}>
+              Baat Karo Mitra Se →
+            </button>
+          </div>
+        )}
+
+        {started && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.4rem',
+              marginBottom: '0.5rem',
+              padding: '0.1rem 0',
+            }}
+          >
+            {[
+              {
+                label: '🐄 Vet',
+                type: 'vet' as const,
+                color: '#d1fae5',
+                border: '#6ee7b7',
+                text: '#065f46',
+              },
+              {
+                label: '🌾 Agri Shop',
+                type: 'agri_input' as const,
+                color: '#fef3c7',
+                border: '#fcd34d',
+                text: '#78350f',
+              },
+              {
+                label: '📦 Storage',
+                type: 'crop_storage' as const,
+                color: '#ede9fe',
+                border: '#a78bfa',
+                text: '#5b21b6',
+              },
+            ].map((btn) => (
+              <button
+                key={btn.type}
+                onClick={() => requestLocationForResource(btn.type)}
+                style={{
+                  flex: 1,
+                  padding: '0.45rem 0.2rem',
+                  borderRadius: 10,
+                  background: btn.color,
+                  border: `1.5px solid ${btn.border}`,
+                  color: btn.text,
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {messages.map((msg) => {
+          const isUser = msg.from === 'user'
+          return (
+            <div
+              key={msg.id}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '0.4rem',
+                justifyContent: isUser ? 'flex-end' : 'flex-start',
+                animation: 'fadeUp 0.2s ease',
+              }}
+            >
+              {!isUser && (
                 <div
                   style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: '#2d6a4f',
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: '80%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    flexShrink: 0,
                   }}
                 >
-                  {msg.type === 'audio' ? (
-                    <AudioBubble
-                      msg={msg}
-                      isUser={isUser}
-                      playingId={playingId}
-                      pausedId={pausedId}
-                      onPlay={handlePlay}
-                      onPause={handlePause}
-                      onStop={handleStop}
-                    />
-                  ) : (
-                    <div style={isUser ? S.userBubble : S.botBubble}>
-                      {msg.text.split('\n').map((line, j, arr) => (
-                        <span key={j}>
-                          {line}
-                          {j < arr.length - 1 && <br />}
-                        </span>
-                      ))}
-                      {!isUser && (
-                        <button
-                          style={{
-                            ...S.speakerBtn,
-                            background:
-                              playingId === msg.id ? '#e8f5e9' : 'transparent',
-                          }}
-                          onClick={() =>
-                            playingId === msg.id
-                              ? handlePause(msg.id)
-                              : pausedId === msg.id
-                                ? handlePlay(msg.id, msg.text)
-                                : handlePlay(msg.id, msg.text)
-                          }
-                          title="Suno"
-                        >
-                          {playingId === msg.id ? '⏸ Roko' : '🔊 Suno'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  <div style={S.timeStamp}>{msg.time}</div>
+                  🧠
                 </div>
+              )}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: isUser ? 'flex-end' : 'flex-start',
+                  maxWidth: '78%',
+                }}
+              >
+                {msg.type === 'audio' ? (
+                  <AudioBubble
+                    msg={msg}
+                    isUser={isUser}
+                    playingId={playingId}
+                    pausedId={pausedId}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                    onStop={handleStop}
+                  />
+                ) : (
+                  <div style={isUser ? S.userBubble : S.botBubble}>
+                    {msg.text.split('\n').map((line, j, arr) => (
+                      <span key={j}>
+                        {line}
+                        {j < arr.length - 1 && <br />}
+                      </span>
+                    ))}
+                    {!isUser && (
+                      <button
+                        style={{
+                          ...S.speakerBtn,
+                          background:
+                            playingId === msg.id ? '#e8f5e9' : 'transparent',
+                        }}
+                        onClick={() =>
+                          playingId === msg.id
+                            ? handlePause(msg.id)
+                            : handlePlay(msg.id, msg.text)
+                        }
+                      >
+                        {playingId === msg.id ? '⏸ Roko' : '🔊 Suno'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div style={S.timeStamp}>{msg.time}</div>
               </div>
-            )
-          })}
-
-          {loading && started && (
-            <div style={{ ...S.msgRow, justifyContent: 'flex-start' }}>
-              <div style={S.msgAvatar}>🧠</div>
-              <div style={S.botBubble}>
-                <div style={{ display: 'flex', gap: 5, padding: '3px 0' }}>
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      style={{ ...S.dot, animationDelay: `${i * 0.22}s` }}
-                    />
-                  ))}
+              {isUser && (
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: '#40916c',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  👤
                 </div>
+              )}
+            </div>
+          )
+        })}
+
+        {loading && started && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: '0.4rem',
+              justifyContent: 'flex-start',
+            }}
+          >
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: '#2d6a4f',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+              }}
+            >
+              🧠
+            </div>
+            <div style={{ ...S.botBubble, padding: '0.65rem 0.85rem' }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{ ...S.dot, animationDelay: `${i * 0.22}s` }}
+                  />
+                ))}
               </div>
             </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
 
-        {/* INPUT */}
-        {started && (
-          <>
-            {listening && (
-              <div style={S.recordingBar}>
-                <div style={S.recDot} />
-                <span style={{ fontWeight: 700, color: '#dc2626' }}>
-                  Recording... {recSeconds}s
-                </span>
-                <span style={{ color: '#6b7c6b', fontSize: '0.8rem' }}>
-                  Chodo bhejne ke liye
-                </span>
-              </div>
-            )}
-            {!listening && (
-              <div style={S.inputBar}>
-                <input
-                  ref={inputRef}
-                  style={S.inputField}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendText(input)}
-                  placeholder="Yahan likho..."
+      {/* INPUT AREA */}
+      {started && (
+        <div
+          style={{
+            background: '#fff',
+            borderTop: '1px solid #e5ede5',
+            flexShrink: 0,
+          }}
+        >
+          {listening ? (
+            <div
+              style={{
+                padding: '0.6rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: '#fff5f5',
+              }}
+            >
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: '#dc2626',
+                  flexShrink: 0,
+                  animation: 'recPulse 1s infinite',
+                }}
+              />
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: '#dc2626',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Recording... {recSeconds}s
+              </span>
+              <span
+                style={{
+                  color: '#9ca3af',
+                  fontSize: '0.78rem',
+                  marginLeft: 'auto',
+                }}
+              >
+                Chodo = Bhejo
+              </span>
+              <button
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '50%',
+                  background: '#dc2626',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '1.1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+                onPointerUp={stopMic}
+                onPointerLeave={stopMic}
+              >
+                🔴
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '0.6rem 0.75rem',
+                display: 'flex',
+                gap: '0.45rem',
+                alignItems: 'center',
+              }}
+            >
+              <input
+                ref={inputRef}
+                style={S.inputField}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendText(input)}
+                placeholder="Yahan likho..."
+                disabled={loading}
+              />
+              {input.trim() ? (
+                <button
+                  style={{ ...S.roundBtn, background: '#2d6a4f' }}
+                  onClick={() => sendText(input)}
                   disabled={loading}
-                />
-                {input.trim() ? (
-                  <button
-                    style={{ ...S.roundBtn, background: '#2d6a4f' }}
-                    onClick={() => sendText(input)}
-                    disabled={loading}
-                  >
-                    ➤
-                  </button>
-                ) : (
-                  <button
-                    style={{
-                      ...S.roundBtn,
-                      background: '#f4a261',
-                      fontSize: '1.3rem',
-                    }}
-                    onPointerDown={startMic}
-                    onPointerUp={stopMic}
-                    onPointerLeave={stopMic}
-                    disabled={loading}
-                    title="Dabake rako aur bolo"
-                  >
-                    🎤
-                  </button>
-                )}
-              </div>
-            )}
-            {listening && (
-              <div style={{ ...S.inputBar, justifyContent: 'center' }}>
+                >
+                  ➤
+                </button>
+              ) : (
                 <button
                   style={{
                     ...S.roundBtn,
-                    background: '#dc2626',
-                    width: 56,
-                    height: 56,
-                    fontSize: '1.5rem',
+                    background: '#f59e0b',
+                    fontSize: '1.2rem',
                   }}
+                  onPointerDown={startMic}
                   onPointerUp={stopMic}
                   onPointerLeave={stopMic}
+                  disabled={loading}
+                  title="Dabake rako aur bolo"
                 >
-                  🔴
+                  🎤
                 </button>
-              </div>
-            )}
-            <div style={S.hint}>
-              {input.trim()
-                ? 'Enter ya ➤ dabao bhejne ke liye'
-                : '🎤 Dabakar rako + bolo → chodo = bhejna'}
+              )}
             </div>
-          </>
-        )}
-      </div>
+          )}
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: '0.65rem',
+              color: '#c0c8c0',
+              paddingBottom: '0.4rem',
+              paddingTop: 0,
+            }}
+          >
+            {input.trim()
+              ? 'Enter ya ➤ dabao bhejne ke liye'
+              : '🎤 Dabakar bolo → chodo = bhejna'}
+          </div>
+        </div>
+      )}
 
       {/* Resource Finder Modal */}
       {showResourceFinder && userLocation && (
         <div
           style={{
-            position: 'fixed',
+            position: 'absolute',
             inset: 0,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
@@ -968,12 +1244,7 @@ export default function MindPulsePage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
+            style={{ width: '100%', maxHeight: '90%', overflowY: 'auto' }}
           >
             <ResourceFinder
               latitude={userLocation.latitude}
@@ -987,9 +1258,9 @@ export default function MindPulsePage() {
       )}
 
       <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes dotBounce { 0%,80%,100%{transform:translateY(0);opacity:.3} 40%{transform:translateY(-8px);opacity:1} }
+        @keyframes dotBounce { 0%,80%,100%{transform:translateY(0);opacity:.3} 40%{transform:translateY(-6px);opacity:1} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
         @keyframes waveBar { from{transform:scaleY(0.4)} to{transform:scaleY(1.2)} }
         @keyframes recPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
@@ -1000,211 +1271,111 @@ export default function MindPulsePage() {
 
 const S: Record<string, React.CSSProperties> = {
   header: {
-    background: '#2d6a4f',
+    background: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
     color: '#fff',
-    padding: '0.75rem 1.1rem',
+    padding: '0.65rem 1rem',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+    gap: '0.65rem',
     flexShrink: 0,
-  },
-  avatarWrap: { position: 'relative', flexShrink: 0 },
-  avatarCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: '50%',
-    background: '#40916c',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1.4rem',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 11,
-    height: 11,
-    borderRadius: '50%',
-    background: '#4ade80',
-    border: '2px solid #2d6a4f',
-    animation: 'pulse 1.5s infinite',
-  },
-  botName: { fontWeight: 800, fontSize: '1rem' },
-  botStatus: { fontSize: '0.73rem', opacity: 0.88 },
-  freeBadge: {
-    marginLeft: 'auto',
-    background: '#40916c',
-    padding: '0.2rem 0.55rem',
-    borderRadius: '99px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    letterSpacing: '0.06em',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
   },
   chatArea: {
     flex: 1,
     overflowY: 'auto',
-    padding: '1rem 0.8rem',
+    padding: '0.75rem 0.75rem 0.5rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.55rem',
+    gap: '0.5rem',
   },
   introCard: {
     background: '#fff',
-    borderRadius: '20px',
-    padding: '2rem 1.5rem',
-    margin: '0.5rem 0',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+    borderRadius: 20,
+    padding: '1.5rem 1.25rem',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '1rem',
+    gap: '0.85rem',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+    border: '1px solid #e8f0e8',
+    flex: 1,
+    justifyContent: 'center',
     animation: 'fadeUp 0.3s ease',
   },
-  introTitle: {
-    fontSize: '1.6rem',
-    fontWeight: 800,
-    color: '#1b4332',
-    margin: 0,
-  },
-  introText: {
-    fontSize: '0.95rem',
-    color: '#4b5563',
-    textAlign: 'center',
-    lineHeight: 1.7,
-    margin: 0,
-  },
-  pillRow: {
-    display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  pill: {
-    background: '#f0faf4',
-    border: '1px solid #c8e6d0',
-    borderRadius: '99px',
-    padding: '0.3rem 0.75rem',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    color: '#2d6a4f',
-  },
   startBtn: {
+    width: '100%',
     background: '#2d6a4f',
     color: '#fff',
     border: 'none',
-    borderRadius: '50px',
-    padding: '1rem 2.5rem',
-    fontSize: '1.1rem',
-    fontWeight: 800,
+    borderRadius: 14,
+    padding: '0.85rem',
+    fontSize: '1rem',
+    fontWeight: 700,
     cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(45,106,79,0.3)',
-    width: '100%',
-  },
-  msgRow: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    gap: '0.45rem',
-    animation: 'fadeUp 0.2s ease',
-  },
-  msgAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: '50%',
-    background: '#40916c',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.85rem',
-    flexShrink: 0,
+    letterSpacing: '0.01em',
+    transition: 'background 0.2s',
   },
   botBubble: {
     background: '#fff',
-    borderRadius: '18px 18px 18px 4px',
-    padding: '0.75rem 0.95rem',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.09)',
-    fontSize: '0.975rem',
+    borderRadius: '4px 16px 16px 16px',
+    padding: '0.65rem 0.85rem',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    fontSize: '0.925rem',
     color: '#1a2e1a',
     lineHeight: 1.65,
+    border: '1px solid #f0f0f0',
   },
   userBubble: {
-    background: '#d9fdd3',
-    borderRadius: '18px 18px 4px 18px',
-    padding: '0.75rem 0.95rem',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.09)',
-    fontSize: '0.975rem',
+    background: '#dcf8c6',
+    borderRadius: '16px 16px 4px 16px',
+    padding: '0.65rem 0.85rem',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    fontSize: '0.925rem',
     color: '#1a2e1a',
     lineHeight: 1.65,
   },
   speakerBtn: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.25rem',
-    marginTop: '0.45rem',
-    border: '1px solid #d8e8d0',
-    borderRadius: '8px',
-    padding: '0.22rem 0.6rem',
-    fontSize: '0.75rem',
+    gap: '0.2rem',
+    marginTop: '0.4rem',
+    border: '1px solid #d0e8d0',
+    borderRadius: 8,
+    padding: '0.2rem 0.55rem',
+    fontSize: '0.72rem',
     fontWeight: 600,
     color: '#2d6a4f',
     cursor: 'pointer',
     transition: 'background 0.2s',
   },
   timeStamp: {
-    fontSize: '0.68rem',
-    color: '#9ca3af',
+    fontSize: '0.64rem',
+    color: '#b0bdb0',
     marginTop: '0.2rem',
     paddingLeft: '0.2rem',
   },
   dot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: '50%',
-    background: '#a0aec0',
+    background: '#b0bdb0',
     display: 'inline-block',
     animation: 'dotBounce 1s ease-in-out infinite',
   },
-  recordingBar: {
-    background: '#fff0f0',
-    borderTop: '1px solid #fca5a5',
-    padding: '0.6rem 1rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    flexShrink: 0,
-  },
-  recDot: {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: '#dc2626',
-    flexShrink: 0,
-    animation: 'recPulse 1s infinite',
-  },
-  inputBar: {
-    background: '#f0f2f5',
-    padding: '0.6rem 0.75rem',
-    display: 'flex',
-    gap: '0.45rem',
-    alignItems: 'center',
-    borderTop: '1px solid #dde5d8',
-    flexShrink: 0,
-  },
   inputField: {
     flex: 1,
-    padding: '0.75rem 1rem',
-    borderRadius: '24px',
-    border: 'none',
-    fontSize: '1rem',
-    background: '#fff',
+    padding: '0.7rem 1rem',
+    borderRadius: 24,
+    border: '1.5px solid #e0e8e0',
+    fontSize: '0.95rem',
+    background: '#f8faf8',
     outline: 'none',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
     color: '#1a2e1a',
+    transition: 'border-color 0.2s',
   },
   roundBtn: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: '50%',
     border: 'none',
     color: '#fff',
@@ -1214,25 +1385,6 @@ const S: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
-    transition: 'background 0.2s',
-  },
-  hint: {
-    background: '#f0f2f5',
-    textAlign: 'center' as const,
-    fontSize: '0.68rem',
-    color: '#9ca3af',
-    paddingBottom: '0.5rem',
-    flexShrink: 0,
-  },
-  quickActionBtn: {
-    padding: '0.6rem 0.9rem',
-    borderRadius: '8px',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    width: '100%',
-    textAlign: 'center' as const,
+    transition: 'transform 0.15s, background 0.2s',
   },
 }
