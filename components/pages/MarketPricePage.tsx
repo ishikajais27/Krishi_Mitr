@@ -1,9 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-// ─────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────
 interface MandiRecord {
   district: string
   market: string
@@ -25,9 +22,6 @@ interface SavedAlert {
   lastDate: string
 }
 
-// ─────────────────────────────────────────────────────
-// CROPS
-// ─────────────────────────────────────────────────────
 const CROPS = [
   { emoji: '🌾', odia: 'ଧାନ', hindi: 'Dhan', api: 'Paddy' },
   { emoji: '🍚', odia: 'ଚାଉଳ', hindi: 'Chawal', api: 'Rice' },
@@ -44,9 +38,6 @@ const CROPS = [
   { emoji: '🥭', odia: 'ଆମ୍ବ', hindi: 'Aam', api: 'Mango' },
 ]
 
-// ─────────────────────────────────────────────────────
-// UNITS — what a farmer actually sells
-// ─────────────────────────────────────────────────────
 const UNITS = [
   { label: '250 gm', kg: 0.25 },
   { label: '500 gm', kg: 0.5 },
@@ -58,7 +49,7 @@ const UNITS = [
   { label: '50 Kilo', kg: 50 },
   { label: '1 Quintal (100 kg)', kg: 100 },
 ]
-const DEFAULT_UNIT_IDX = 2 // 1 Kilo by default
+const DEFAULT_UNIT_IDX = 2
 
 const DISTRICTS = [
   { name: 'Cuttack', icon: '🏙️', tag: 'Major Mandi' },
@@ -82,25 +73,19 @@ const DISTRICTS = [
   { name: 'Bolangir', icon: '🌻', tag: 'Western' },
 ]
 
-// ─────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────
 function priceForUnit(perQuintal: number, kg: number): string {
   const val = (perQuintal / 100) * kg
   if (val < 1) return `${(val * 100).toFixed(0)} paise`
   return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`
 }
 
-function rawPriceForUnit(perQuintal: number, kg: number): number {
-  return (perQuintal / 100) * kg
-}
-
 function getAdvice(modal: number, allPrices: number[]) {
   if (allPrices.length < 2)
     return {
       emoji: '🟡',
-      color: '#d97706',
-      bg: '#fef3c7',
+      color: '#78611a',
+      bg: '#fdf8e7',
+      border: '#c8a832',
       text: 'Thoda Ruko',
       sub: 'Aur mandis ka data nahi mila. Kal dobara check karo.',
     }
@@ -110,23 +95,26 @@ function getAdvice(modal: number, allPrices: number[]) {
   if (pct >= 0.65)
     return {
       emoji: '🟢',
-      color: '#16a34a',
-      bg: '#dcfce7',
+      color: '#2d5a27',
+      bg: '#eef4e8',
+      border: '#6a9e56',
       text: 'ABHI BECHO!',
       sub: 'Aaj bhav bahut achha hai. Jaldi karo.',
     }
   if (pct >= 0.35)
     return {
       emoji: '🟡',
-      color: '#d97706',
-      bg: '#fef3c7',
+      color: '#78611a',
+      bg: '#fdf8e7',
+      border: '#c8a832',
       text: 'Thoda Ruko',
       sub: 'Bhav theek hai, par aur upar ja sakta hai.',
     }
   return {
     emoji: '🔴',
-    color: '#dc2626',
-    bg: '#fee2e2',
+    color: '#7a2e2e',
+    bg: '#faeeee',
+    border: '#c97070',
     text: 'MAT BECHO',
     sub: 'Bhav abhi bahut kam hai. Ruko.',
   }
@@ -140,22 +128,9 @@ function buildWAMsg(
   unitPrice: string,
   advice: ReturnType<typeof getAdvice>,
 ): string {
-  return (
-    `🌾 *KrishiMitra — Aaj ka Mandi Bhav*\n\n` +
-    `Fasal: ${crop.emoji} ${crop.hindi} (${crop.odia})\n` +
-    `District: 📍 ${district}\n` +
-    `Mandi: 🏪 ${best.market}\n\n` +
-    `💰 *${unitLabel} ka bhav: ${unitPrice}*\n` +
-    `📦 1 Quintal (100kg): ₹${parseFloat(best.modal_price).toLocaleString('en-IN')}\n\n` +
-    `${advice.emoji} *${advice.text}*\n${advice.sub}\n\n` +
-    `📅 ${best.arrival_date} | Agmarknet data\n` +
-    `_KrishiMitra app se bheja gaya_`
-  )
+  return `🌾 *KrishiMitra — Aaj ka Mandi Bhav*\n\nFasal: ${crop.emoji} ${crop.hindi} (${crop.odia})\nDistrict: 📍 ${district}\nMandi: 🏪 ${best.market}\n\n💰 *${unitLabel} ka bhav: ${unitPrice}*\n📦 1 Quintal (100kg): ₹${parseFloat(best.modal_price).toLocaleString('en-IN')}\n\n${advice.emoji} *${advice.text}*\n${advice.sub}\n\n📅 ${best.arrival_date} | Agmarknet data\n_KrishiMitra app se bheja gaya_`
 }
 
-// ─────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────
 type Step = 'crop' | 'district' | 'loading' | 'result' | 'alert_setup' | 'error'
 
 export default function MarketPricePage() {
@@ -181,14 +156,12 @@ export default function MarketPricePage() {
     async (c: (typeof CROPS)[0], dist: string) => {
       setStep('loading')
       setRecords([])
-
       const key = process.env.NEXT_PUBLIC_DATAGOV_API_KEY
       if (!key) {
         setErrMsg('no_key')
         setStep('error')
         return
       }
-
       try {
         const params = new URLSearchParams({
           'api-key': key,
@@ -200,18 +173,29 @@ export default function MarketPricePage() {
             District: dist,
           }),
         })
-
         const res = await fetch(
           `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?${params}`,
         )
-        if (res.status === 403) { setErrMsg('bad_key'); setStep('error'); return }
-        if (!res.ok) { setErrMsg('server'); setStep('error'); return }
-
+        if (res.status === 403) {
+          setErrMsg('bad_key')
+          setStep('error')
+          return
+        }
+        if (!res.ok) {
+          setErrMsg('server')
+          setStep('error')
+          return
+        }
         const data = await res.json()
         const recs: MandiRecord[] = data.records ?? []
-        if (!recs.length) { setErrMsg('no_data'); setStep('error'); return }
-
-        recs.sort((a, b) => parseFloat(b.modal_price) - parseFloat(a.modal_price))
+        if (!recs.length) {
+          setErrMsg('no_data')
+          setStep('error')
+          return
+        }
+        recs.sort(
+          (a, b) => parseFloat(b.modal_price) - parseFloat(a.modal_price),
+        )
         setRecords(recs)
         setStep('result')
       } catch {
@@ -241,7 +225,9 @@ export default function MarketPricePage() {
       ),
     ]
     setSavedAlerts(updated)
-    try { localStorage.setItem('km_alerts', JSON.stringify(updated)) } catch {}
+    try {
+      localStorage.setItem('km_alerts', JSON.stringify(updated))
+    } catch {}
     setAlertSaved(true)
   }
 
@@ -249,7 +235,6 @@ export default function MarketPricePage() {
     if (savedAlerts.length === 0) return
     const key = process.env.NEXT_PUBLIC_DATAGOV_API_KEY
     if (!key) return
-
     async function checkPrices() {
       for (const alert of savedAlerts) {
         try {
@@ -257,7 +242,11 @@ export default function MarketPricePage() {
             'api-key': key!,
             format: 'json',
             limit: '5',
-            filters: JSON.stringify({ State: 'Odisha', Commodity: alert.cropApi, District: alert.district }),
+            filters: JSON.stringify({
+              State: 'Odisha',
+              Commodity: alert.cropApi,
+              District: alert.district,
+            }),
           })
           const res = await fetch(
             `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?${params}`,
@@ -266,36 +255,40 @@ export default function MarketPricePage() {
           const data = await res.json()
           const recs: MandiRecord[] = data.records ?? []
           if (!recs.length) continue
-          recs.sort((a, b) => parseFloat(b.modal_price) - parseFloat(a.modal_price))
+          recs.sort(
+            (a, b) => parseFloat(b.modal_price) - parseFloat(a.modal_price),
+          )
           const newPrice = parseFloat(recs[0].modal_price)
-          const changePct = Math.abs((newPrice - alert.lastPrice) / alert.lastPrice) * 100
+          const changePct =
+            Math.abs((newPrice - alert.lastPrice) / alert.lastPrice) * 100
           if (changePct >= 5) {
-            const direction = newPrice > alert.lastPrice ? 'BADH GAYA ↑' : 'GIRA GAYA ↓'
+            const direction =
+              newPrice > alert.lastPrice ? 'BADH GAYA ↑' : 'GIRA GAYA ↓'
             const waMsg = encodeURIComponent(
-              `🚨 *KrishiMitra Price Alert!*\n\n` +
-              `${alert.cropEmoji} *${alert.cropHindi}* ka bhav ${direction}!\n\n` +
-              `📍 District: ${alert.district}\n🏪 Mandi: ${recs[0].market}\n\n` +
-              `Pehle ka bhav: ₹${alert.lastPrice.toLocaleString('en-IN')}/qtl\n` +
-              `*Aaj ka bhav: ₹${newPrice.toLocaleString('en-IN')}/qtl*\n` +
-              `Badlaav: ${changePct.toFixed(1)}%\n\n📅 ${recs[0].arrival_date}\n_KrishiMitra app se auto-alert_`,
+              `🚨 *KrishiMitra Price Alert!*\n\n${alert.cropEmoji} *${alert.cropHindi}* ka bhav ${direction}!\n\n📍 District: ${alert.district}\n🏪 Mandi: ${recs[0].market}\n\nPehle ka bhav: ₹${alert.lastPrice.toLocaleString('en-IN')}/qtl\n*Aaj ka bhav: ₹${newPrice.toLocaleString('en-IN')}/qtl*\nBadlaav: ${changePct.toFixed(1)}%\n\n📅 ${recs[0].arrival_date}\n_KrishiMitra app se auto-alert_`,
             )
-            window.open(`https://wa.me/91${alert.phone}?text=${waMsg}`, '_blank')
+            window.open(
+              `https://wa.me/91${alert.phone}?text=${waMsg}`,
+              '_blank',
+            )
             const updated = savedAlerts.map((a) =>
               a.cropApi === alert.cropApi && a.district === alert.district
                 ? { ...a, lastPrice: newPrice, lastDate: recs[0].arrival_date }
                 : a,
             )
             setSavedAlerts(updated)
-            try { localStorage.setItem('km_alerts', JSON.stringify(updated)) } catch {}
+            try {
+              localStorage.setItem('km_alerts', JSON.stringify(updated))
+            } catch {}
           }
         } catch {}
       }
     }
-
     checkPrices()
     checkRef.current = setInterval(checkPrices, 6 * 60 * 60 * 1000)
-    return () => { if (checkRef.current) clearInterval(checkRef.current) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (checkRef.current) clearInterval(checkRef.current)
+    }
   }, [savedAlerts.length])
 
   function reset() {
@@ -312,527 +305,1410 @@ export default function MarketPricePage() {
   const allModal = records.map((r) => parseFloat(r.modal_price))
   const advice = best ? getAdvice(parseFloat(best.modal_price), allModal) : null
   const unitObj = UNITS[unitIdx]
-  const unitPrice = best ? priceForUnit(parseFloat(best.modal_price), unitObj.kg) : ''
+  const unitPrice = best
+    ? priceForUnit(parseFloat(best.modal_price), unitObj.kg)
+    : ''
 
-  // ─────────────────────────────────────────────────
+  // Theme colors matching KrishiMitra nude-green palette
+  const theme = {
+    bg: '#f2f0e8', // warm cream background
+    bgCard: '#faf9f4', // slightly lighter card bg
+    bgCardAlt: '#f5f3ea', // alternate card bg
+    green: '#2d4a1e', // deep olive dark green (like "KRISHI" text)
+    greenMid: '#4a7a35', // mid green
+    greenLight: '#6a9e56', // lighter green accent
+    greenPale: '#dde8d4', // very pale green for borders
+    greenPaleCard: '#eaf0e2', // pale green card tint
+    accent: '#a8c060', // yellow-green accent (like ticker bar)
+    accentDark: '#7a9a3a', // darker yellow-green
+    text: '#2a2a1e', // near-black warm text
+    textMid: '#4a4a35', // mid warm text
+    textLight: '#7a7a5a', // light warm text
+    border: '#cdd9b8', // soft green border
+    tickerBg: '#b8d44a', // yellow-green ticker (from image)
+    tickerText: '#1a2e08', // dark on ticker
+    white: '#faf9f4',
+  }
+
   return (
-    <div style={S.pageWrap}>
-      {/* ─── BACKGROUND ─── */}
+    <div
+      style={{
+        minHeight: '100vh',
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        background: theme.bg,
+        position: 'relative' as const,
+      }}
+    >
+      {/* BG image overlay */}
       <div
         style={{
-          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
           backgroundImage: "url('/market.jpg')",
-          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.18,
         }}
       />
       <div
         style={{
-          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-          background: 'linear-gradient(to bottom, rgba(20,35,18,0.62) 0%, rgba(20,35,18,0.45) 55%, transparent 75%)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          background: `linear-gradient(180deg, rgba(42,58,20,0.45) 0%, rgba(242,240,232,0.88) 38%, ${theme.bg} 100%)`,
         }}
       />
-      <svg
-        aria-hidden="true"
-        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
-        viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d="M-10 600 Q130 515 315 555 Q480 590 600 528 Q722 466 885 528 Q1025 585 1162 522 Q1298 460 1450 510 L1450 920 L-10 920 Z" fill="#ede4d3" />
-        <path d="M-10 658 Q162 585 372 622 Q552 654 718 592 Q888 528 1072 598 Q1242 656 1450 604 L1450 920 L-10 920 Z" fill="#f5ede0" opacity="0.65" />
-      </svg>
 
-      {/* ══ TOP BAR — CurvedLoop replaces the static title ══ */}
-      <div style={S.topBar}>
+      {/* ── YELLOW-GREEN TICKER BAR matching brand ── */}
+      <div
+        style={{
+          width: '100%',
+          height: 44,
+          overflow: 'hidden',
+          background: `linear-gradient(90deg, ${theme.accentDark}, ${theme.accent} 40%, #c8de58 70%, ${theme.accent})`,
+          borderBottom: `1px solid rgba(255,255,255,0.2)`,
+          display: 'flex',
+          alignItems: 'center',
+          position: 'sticky' as const,
+          top: 0,
+          zIndex: 100,
+          boxShadow: '0 3px 18px rgba(168,192,96,0.35)',
+        }}
+      >
         {step !== 'crop' ? (
-          <button style={S.backBtn} onClick={reset}>← Wapas</button>
+          <button
+            onClick={reset}
+            style={{
+              background: 'rgba(0,0,0,0.18)',
+              border: `1px solid rgba(255,255,255,0.35)`,
+              color: theme.tickerText,
+              borderRadius: 10,
+              padding: '0.28rem 0.8rem',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              marginLeft: '0.75rem',
+              flexShrink: 0,
+              whiteSpace: 'nowrap' as const,
+            }}
+          >
+            ← Wapas
+          </button>
         ) : (
           <div style={{ width: 80, flexShrink: 0 }} />
         )}
-
-        {/* ── CSS ticker — always visible inside the 50px orange bar ── */}
-        <div style={S.topMarqueeWrap}>
-          <div style={S.tickerTrack}>
+        <div
+          style={{
+            flex: 1,
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              whiteSpace: 'nowrap' as const,
+              animation: 'ticker 28s linear infinite',
+              willChange: 'transform',
+            }}
+          >
             {[0, 1].map((n) => (
-              <span key={n} style={S.tickerText} aria-hidden={n === 1}>
-                📈 MANDI BHAV &nbsp;•&nbsp; AAJ KA BHAV &nbsp;•&nbsp; ODISHA MANDIS &nbsp;•&nbsp; LIVE AGMARKNET DATA &nbsp;•&nbsp; BECHO YA RUKO &nbsp;•&nbsp; 19 DISTRICTS &nbsp;•&nbsp; 13 FASLEN &nbsp;•&nbsp;&nbsp;
+              <span
+                key={n}
+                style={{
+                  display: 'inline-block',
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.1em',
+                  color: theme.tickerText,
+                  textShadow: '0 1px 3px rgba(255,255,255,0.3)',
+                  paddingRight: '2rem',
+                }}
+              >
+                📈 MANDI BHAV &nbsp;•&nbsp; AAJ KA BHAV &nbsp;•&nbsp; ODISHA
+                MANDIS &nbsp;•&nbsp; LIVE AGMARKNET DATA &nbsp;•&nbsp; BECHO YA
+                RUKO &nbsp;•&nbsp; 19 DISTRICTS &nbsp;•&nbsp; 13 FASLEN
+                &nbsp;•&nbsp;&nbsp;
               </span>
             ))}
           </div>
         </div>
-
         <div style={{ width: 80, flexShrink: 0 }} />
       </div>
 
-      {/* ══ STEP 1: CROP ══ */}
+      {/* ══════════ STEP 1: CROP ══════════ */}
       {step === 'crop' && (
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={S.heroSplit}>
-            <div style={S.heroLeft}>
-              <span style={S.heroBadge}>📡 Live · Agmarknet Data</span>
-              <h1 style={S.heroTitle}>
-                Aaj ka<br />
-                <span style={S.heroAccent}>Mandi Bhav</span>
-              </h1>
-              <p style={S.heroDesc}>
-                Apni fasal chuniye — real-time price aur{' '}
-                <strong style={{ color: '#f4a261' }}>"Becho ya Ruko"</strong>{' '}
-                advice paiye. Bilkul free 🙏
-              </p>
-              <div style={S.pillRow}>
-                <span style={S.heroPill}>🏪 19 Districts</span>
-                <span style={S.heroPill}>🌾 13 Crops</span>
-                <span style={S.heroPill}>✅ Daily Update</span>
-              </div>
+        <div style={{ position: 'relative', zIndex: 1, paddingBottom: '3rem' }}>
+          {/* Hero */}
+          <div
+            style={{
+              padding: '3rem 5vw 2.5rem',
+              maxWidth: 860,
+              animation: 'fadeUp 0.5s ease both',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                background: theme.green,
+                color: '#e8f0d4',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                padding: '0.35rem 1rem',
+                borderRadius: 99,
+                letterSpacing: '0.06em',
+                marginBottom: '1rem',
+              }}
+            >
+              📡 Live · Agmarknet Data
+            </span>
+            <h1
+              style={{
+                fontSize: 'clamp(2.2rem,4.5vw,3.8rem)',
+                fontWeight: 900,
+                color: theme.green,
+                lineHeight: 1.05,
+                margin: '0 0 0.75rem',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Aaj ka <span style={{ color: theme.accentDark }}>Mandi Bhav</span>
+            </h1>
+            <p
+              style={{
+                fontSize: '1rem',
+                color: theme.textMid,
+                lineHeight: 1.75,
+                margin: '0 0 1.25rem',
+                maxWidth: 520,
+              }}
+            >
+              Apni fasal chuniye — real-time price aur{' '}
+              <strong style={{ color: theme.accentDark }}>
+                "Becho ya Ruko"
+              </strong>{' '}
+              advice paiye. Bilkul free 🙏
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.6rem',
+                flexWrap: 'wrap' as const,
+              }}
+            >
+              {['🏪 19 Districts', '🌾 13 Crops', '✅ Daily Update'].map(
+                (p) => (
+                  <span
+                    key={p}
+                    style={{
+                      background: theme.bgCard,
+                      border: `1.5px solid ${theme.border}`,
+                      color: theme.green,
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      padding: '0.4rem 1rem',
+                      borderRadius: 99,
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    {p}
+                  </span>
+                ),
+              )}
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', margin: '20px 0' }}>
-            <h2 style={{ fontSize: '32px', fontWeight: 700, color: '#FF6B00', fontFamily: 'Georgia, serif', marginBottom: '8px' }}>
+          {/* Section heading */}
+          <div
+            style={{
+              textAlign: 'center' as const,
+              margin: '0 0 1.5rem',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.6rem',
+                fontWeight: 800,
+                color: theme.green,
+                margin: '0 0 0.25rem',
+              }}
+            >
               🌿 Apni Fasal Chuniye
             </h2>
-            <p style={{ fontSize: '14px', color: '#555', fontFamily: 'Georgia, serif' }}>
-              Tap karke price dekho
+            <p
+              style={{
+                fontSize: '0.875rem',
+                color: theme.textLight,
+                margin: 0,
+              }}
+            >
+              Fasal pe tap karke price dekho
             </p>
           </div>
 
-          <div style={S.cropGridFull}>
+          {/* Crop grid — fully visible, no overflow clipping */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
+              gap: '1rem',
+              padding: '0 5vw 1rem',
+              maxWidth: 1100,
+              margin: '0 auto',
+              boxSizing: 'border-box' as const,
+            }}
+          >
             {CROPS.map((c, i) => (
               <button
                 key={c.api}
-                style={{ ...S.cropCardFull, animationDelay: `${i * 0.04}s` }}
-                onClick={() => { setCrop(c); setStep('district') }}
+                onClick={() => {
+                  setCrop(c)
+                  setStep('district')
+                }}
+                style={{
+                  position: 'relative' as const,
+                  background: theme.bgCard,
+                  border: `2px solid ${theme.border}`,
+                  borderRadius: 20,
+                  padding: '1.6rem 0.75rem 1.2rem',
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 12px rgba(42,58,20,0.08)',
+                  animation: 'fadeUp 0.45s ease both',
+                  animationDelay: `${i * 0.04}s`,
+                  transition:
+                    'transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.15s',
+                  WebkitTapHighlightColor: 'transparent',
+                  minHeight: 140,
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.transform = 'translateY(-3px)'
+                  el.style.borderColor = theme.greenMid
+                  el.style.background = theme.greenPaleCard
+                  el.style.boxShadow = '0 8px 24px rgba(42,58,20,0.14)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.transform = ''
+                  el.style.borderColor = theme.border
+                  el.style.background = theme.bgCard
+                  el.style.boxShadow = '0 2px 12px rgba(42,58,20,0.08)'
+                }}
               >
-                <span style={S.cropArrowNew}>›</span>
-                <span style={S.cropEmojiNew}>{c.emoji}</span>
-                <span style={S.cropHindiNew}>{c.hindi}</span>
-                <span style={S.cropOdiaNew}>{c.odia}</span>
+                <span
+                  style={{
+                    position: 'absolute' as const,
+                    top: '0.65rem',
+                    right: '0.75rem',
+                    fontSize: '0.85rem',
+                    color: theme.textLight,
+                  }}
+                >
+                  ›
+                </span>
+                <span
+                  style={{
+                    fontSize: '3rem',
+                    lineHeight: 1,
+                    filter: 'drop-shadow(1px 2px 6px rgba(0,0,0,0.1))',
+                    marginBottom: '0.2rem',
+                  }}
+                >
+                  {c.emoji}
+                </span>
+                <span
+                  style={{
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    color: theme.green,
+                  }}
+                >
+                  {c.hindi}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    color: theme.textLight,
+                    fontWeight: 500,
+                  }}
+                >
+                  {c.odia}
+                </span>
               </button>
             ))}
           </div>
 
-          {/* ── Bottom tip — NO CurvedLoop here anymore ── */}
-          <div style={S.bottomTip}>
-            💡 Bechne se pehle local vyapari se bhi poochho — ye wholesale mandi ka daam hai.
+          <div
+            style={{
+              margin: '1rem 5vw 0',
+              padding: '1rem 1.4rem',
+              background: theme.bgCard,
+              border: `1.5px solid ${theme.border}`,
+              borderRadius: 16,
+              fontSize: '0.9rem',
+              color: theme.textMid,
+              lineHeight: 1.6,
+              maxWidth: 800,
+              boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+            }}
+          >
+            💡 Bechne se pehle local vyapari se bhi poochho — ye wholesale mandi
+            ka daam hai.
           </div>
         </div>
       )}
 
-      {/* ══ STEP 2: DISTRICT ══ */}
+      {/* ══════════ STEP 2: DISTRICT ══════════ */}
       {step === 'district' && crop && (
-        <div style={{ position: 'relative', zIndex: 1, paddingBottom: '2rem' }}>
-          <div style={S.distHeader}>
-            <span style={S.distCropBadge}>{crop.emoji} {crop.hindi} selected</span>
-            <h1 style={S.distTitle}>Apna District Chuniye</h1>
-            <p style={S.distSubtitle}>19 districts · Tap to see today's price</p>
+        <div style={{ position: 'relative', zIndex: 1, paddingBottom: '3rem' }}>
+          <div
+            style={{
+              textAlign: 'center' as const,
+              padding: '2.5rem 1.5rem 1.5rem',
+              animation: 'fadeUp 0.5s ease both',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                background: theme.green,
+                color: '#e8f0d4',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                padding: '0.3rem 1rem',
+                borderRadius: 99,
+                marginBottom: '0.75rem',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {crop.emoji} {crop.hindi} selected
+            </span>
+            <h1
+              style={{
+                fontSize: 'clamp(1.8rem,4vw,3rem)',
+                fontWeight: 900,
+                color: theme.green,
+                margin: '0 0 0.4rem',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Apna District Chuniye
+            </h1>
+            <p
+              style={{ fontSize: '0.9rem', color: theme.textLight, margin: 0 }}
+            >
+              19 districts · Tap karke aaj ka bhav dekho
+            </p>
           </div>
-          <div style={S.distGrid}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '0.85rem',
+              padding: '0 1.5rem',
+              maxWidth: 1000,
+              margin: '0 auto',
+            }}
+          >
             {DISTRICTS.map((d, i) => (
               <button
                 key={d.name}
-                style={{ ...S.distCard, animationDelay: `${i * 0.03}s` }}
-                onClick={() => { setDistrict(d.name); fetchPrices(crop, d.name) }}
+                onClick={() => {
+                  setDistrict(d.name)
+                  fetchPrices(crop, d.name)
+                }}
+                style={{
+                  position: 'relative' as const,
+                  background: theme.bgCard,
+                  border: `2px solid ${theme.border}`,
+                  borderRadius: 18,
+                  padding: '1.1rem 1rem 0.9rem',
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  alignItems: 'flex-start',
+                  gap: '0.2rem',
+                  cursor: 'pointer',
+                  textAlign: 'left' as const,
+                  boxShadow: '0 2px 10px rgba(42,58,20,0.07)',
+                  animation: 'fadeUp 0.4s ease both',
+                  animationDelay: `${i * 0.03}s`,
+                  transition:
+                    'transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.15s',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.transform = 'translateY(-2px)'
+                  el.style.borderColor = theme.greenMid
+                  el.style.background = theme.greenPaleCard
+                  el.style.boxShadow = '0 6px 20px rgba(42,58,20,0.13)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.transform = ''
+                  el.style.borderColor = theme.border
+                  el.style.background = theme.bgCard
+                  el.style.boxShadow = '0 2px 10px rgba(42,58,20,0.07)'
+                }}
               >
-                <span style={S.distCardIcon}>{d.icon}</span>
-                <span style={S.distCardName}>{d.name}</span>
-                <span style={S.distCardTag}>{d.tag}</span>
-                <span style={S.distCardArrow}>→</span>
+                <span
+                  style={{
+                    fontSize: '1.8rem',
+                    lineHeight: 1,
+                    marginBottom: '0.25rem',
+                  }}
+                >
+                  {d.icon}
+                </span>
+                <span
+                  style={{
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    color: theme.green,
+                  }}
+                >
+                  {d.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: theme.textLight,
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  {d.tag}
+                </span>
+                <span
+                  style={{
+                    position: 'absolute' as const,
+                    top: '0.85rem',
+                    right: '0.9rem',
+                    fontSize: '0.85rem',
+                    color: theme.textLight,
+                  }}
+                >
+                  →
+                </span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* ══ LOADING ══ */}
+      {/* ══════════ LOADING ══════════ */}
       {step === 'loading' && (
-        <div style={S.centered}>
-          <div style={S.spinner} />
-          <p style={{ fontWeight: 700, color: '#1b4332', fontSize: '1.1rem', margin: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column' as const,
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            gap: '1rem',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              border: `6px solid ${theme.border}`,
+              borderTop: `6px solid ${theme.greenMid}`,
+              animation: 'spin 0.85s linear infinite',
+            }}
+          />
+          <p
+            style={{
+              fontWeight: 700,
+              color: theme.green,
+              fontSize: '1.1rem',
+              margin: 0,
+            }}
+          >
             Mandi se bhav aa raha hai…
           </p>
-          <p style={{ color: '#6b7c6b', margin: 0 }}>Thoda ruko 🙏</p>
+          <p style={{ color: theme.textLight, margin: 0 }}>Thoda ruko 🙏</p>
         </div>
       )}
 
-      {/* ══ ERROR ══ */}
+      {/* ══════════ ERROR ══════════ */}
       {step === 'error' && (
-        <div style={S.container}>
-          <div style={S.errorCard}>
+        <div
+          style={{
+            padding: '1rem',
+            maxWidth: 480,
+            margin: '0 auto',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              background: theme.bgCard,
+              borderRadius: 20,
+              padding: '2rem 1.5rem',
+              marginTop: '1rem',
+              display: 'flex',
+              flexDirection: 'column' as const,
+              alignItems: 'center',
+              gap: '1rem',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.09)',
+              textAlign: 'center' as const,
+              border: `1.5px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ fontSize: '3rem' }}>
+              {errMsg === 'no_key'
+                ? '🔑'
+                : errMsg === 'bad_key'
+                  ? '⚠️'
+                  : errMsg === 'no_data'
+                    ? '😕'
+                    : '📡'}
+            </div>
+            <p
+              style={{
+                fontSize: '1.2rem',
+                fontWeight: 800,
+                color: theme.green,
+                margin: 0,
+              }}
+            >
+              {errMsg === 'no_key'
+                ? 'API Key chahiye'
+                : errMsg === 'bad_key'
+                  ? 'API Key Galat Hai'
+                  : errMsg === 'no_data'
+                    ? 'Data Nahi Mila'
+                    : 'Internet Error'}
+            </p>
+            <p
+              style={{
+                fontSize: '0.95rem',
+                color: theme.textMid,
+                lineHeight: 1.7,
+                margin: 0,
+              }}
+            >
+              {errMsg === 'no_key' ? (
+                <>
+                  .env mein <strong>NEXT_PUBLIC_DATAGOV_API_KEY</strong> set
+                  karo
+                </>
+              ) : errMsg === 'bad_key' ? (
+                '.env file mein sahi key daalo'
+              ) : errMsg === 'no_data' ? (
+                `${crop?.hindi} ka ${district} mein aaj data nahi aaya. Kal dobara check karo.`
+              ) : (
+                'Internet check karo aur dobara try karo.'
+              )}
+            </p>
             {errMsg === 'no_key' && (
-              <>
-                <div style={S.errIcon}>🔑</div>
-                <p style={S.errT}>API Key chahiye</p>
-                <p style={S.errB}>.env mein<br /><strong>NEXT_PUBLIC_DATAGOV_API_KEY</strong><br />set karo</p>
-                <a href="https://data.gov.in/user/register" target="_blank" rel="noopener noreferrer" style={S.greenBtn}>Free Key Lo 👉</a>
-              </>
+              <a
+                href="https://data.gov.in/user/register"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: theme.green,
+                  color: '#e8f0d4',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: 14,
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'center' as const,
+                }}
+              >
+                Free Key Lo 👉
+              </a>
             )}
-            {errMsg === 'bad_key' && (<><div style={S.errIcon}>⚠️</div><p style={S.errT}>API Key Galat Hai</p><p style={S.errB}>.env file mein sahi key daalo</p></>)}
-            {errMsg === 'no_data' && (<><div style={S.errIcon}>😕</div><p style={S.errT}>Data Nahi Mila</p><p style={S.errB}>{crop?.hindi} ka {district} mein aaj data nahi aaya.<br />Kal dobara check karo.</p></>)}
-            {(errMsg === 'network' || errMsg === 'server') && (<><div style={S.errIcon}>📡</div><p style={S.errT}>Internet Error</p><p style={S.errB}>Internet check karo aur dobara try karo.</p></>)}
-            <button style={S.outlineBtn} onClick={reset}>↩ Wapas Jao</button>
+            <button
+              onClick={reset}
+              style={{
+                background: theme.bgCard,
+                border: `2px solid ${theme.greenMid}`,
+                color: theme.greenMid,
+                padding: '0.85rem',
+                borderRadius: 14,
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              ↩ Wapas Jao
+            </button>
           </div>
         </div>
       )}
 
-      {/* ══ RESULT ══ */}
+      {/* ══════════ RESULT ══════════ */}
       {step === 'result' && best && crop && advice && (
-        <div style={S.resultPage}>
-          <div style={{ ...S.rAdvice, background: advice.color }}>
-            <span style={{ fontSize: '3rem', lineHeight: 1, flexShrink: 0 }}>{advice.emoji}</span>
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            padding: '1.25rem 1.5rem 3rem',
+            maxWidth: 1100,
+            margin: '0 auto',
+          }}
+        >
+          {/* Advice banner */}
+          <div
+            style={{
+              background: advice.bg,
+              border: `2px solid ${advice.border}`,
+              borderRadius: 20,
+              padding: '1.25rem 1.5rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.25rem',
+              animation: 'fadeUp 0.3s ease',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.07)',
+            }}
+          >
+            <span style={{ fontSize: '2.8rem', lineHeight: 1, flexShrink: 0 }}>
+              {advice.emoji}
+            </span>
             <div style={{ flex: 1 }}>
-              <div style={S.rAdviceTitle}>{advice.text}</div>
-              <div style={S.rAdviceSub}>{advice.sub}</div>
+              <div
+                style={{
+                  fontSize: '1.6rem',
+                  fontWeight: 900,
+                  color: advice.color,
+                  lineHeight: 1.1,
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {advice.text}
+              </div>
+              <div
+                style={{
+                  fontSize: '0.9rem',
+                  color: advice.color,
+                  marginTop: '0.25rem',
+                  opacity: 0.85,
+                }}
+              >
+                {advice.sub}
+              </div>
             </div>
             <div style={{ flexShrink: 0, textAlign: 'right' as const }}>
-              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>📅 {best.arrival_date}</div>
-              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginTop: '0.2rem' }}>📍 {district}</div>
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  color: advice.color,
+                  fontWeight: 600,
+                  opacity: 0.8,
+                }}
+              >
+                📅 {best.arrival_date}
+              </div>
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  color: advice.color,
+                  marginTop: '0.2rem',
+                  opacity: 0.7,
+                }}
+              >
+                📍 {district}
+              </div>
             </div>
           </div>
 
-          <div style={S.resultGrid}>
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '1rem' }}>
-              <div style={S.rHeroPrice}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '2.5rem', filter: 'drop-shadow(1px 3px 6px rgba(0,0,0,0.15))' }}>{crop.emoji}</span>
+          {/* Two column grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '1.25rem',
+            }}
+          >
+            {/* LEFT */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column' as const,
+                gap: '1rem',
+              }}
+            >
+              {/* Price hero card */}
+              <div
+                style={{
+                  background: theme.bgCard,
+                  borderRadius: 22,
+                  padding: '1.4rem',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
+                  border: `1.5px solid ${theme.border}`,
+                  animation: 'fadeUp 0.4s 0.05s ease both',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '1.1rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '2.4rem',
+                      filter: 'drop-shadow(1px 2px 6px rgba(0,0,0,0.1))',
+                    }}
+                  >
+                    {crop.emoji}
+                  </span>
                   <div>
-                    <div style={S.rCropName}>{crop.hindi} <span style={{ fontWeight: 500, color: '#6b7c6b', fontSize: '0.9rem' }}>({crop.odia})</span></div>
-                    <div style={S.rCropLoc}>🏪 {best.market}</div>
+                    <div
+                      style={{
+                        fontSize: '1.1rem',
+                        fontWeight: 900,
+                        color: theme.green,
+                      }}
+                    >
+                      {crop.hindi}{' '}
+                      <span
+                        style={{
+                          fontWeight: 500,
+                          color: theme.textLight,
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        ({crop.odia})
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        color: theme.textLight,
+                        marginTop: '0.12rem',
+                      }}
+                    >
+                      🏪 {best.market}
+                    </div>
                   </div>
                 </div>
-                <div style={S.rPriceRow}>
-                  <div style={{ ...S.rPriceBox, borderTop: '4px solid #ef4444' }}>
-                    <div style={S.rPriceBoxLabel}>⬇ Kam</div>
-                    <div style={{ ...S.rPriceVal, color: '#dc2626' }}>{priceForUnit(parseFloat(best.min_price), unitObj.kg)}</div>
-                    <div style={S.rPriceUnit}>{unitObj.label}</div>
-                  </div>
-                  <div style={{ ...S.rPriceBox, borderTop: '4px solid #16a34a', background: '#f0faf4', boxShadow: '0 4px 16px rgba(22,163,74,0.15)' }}>
-                    <div style={S.rPriceBoxLabel}>✅ Aaj ka</div>
-                    <div style={{ ...S.rPriceVal, color: '#16a34a', fontSize: '1.9rem' }}>{unitPrice}</div>
-                    <div style={S.rPriceUnit}>{unitObj.label}</div>
-                  </div>
-                  <div style={{ ...S.rPriceBox, borderTop: '4px solid #2d6a4f' }}>
-                    <div style={S.rPriceBoxLabel}>⬆ Zyada</div>
-                    <div style={{ ...S.rPriceVal, color: '#2d6a4f' }}>{priceForUnit(parseFloat(best.max_price), unitObj.kg)}</div>
-                    <div style={S.rPriceUnit}>{unitObj.label}</div>
-                  </div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '0.6rem',
+                    marginBottom: '0.85rem',
+                    alignItems: 'end',
+                  }}
+                >
+                  {[
+                    {
+                      label: '⬇ Kam',
+                      val: priceForUnit(parseFloat(best.min_price), unitObj.kg),
+                      color: '#7a2e2e',
+                      border: '#c97070',
+                      bg: '#faeeee',
+                    },
+                    {
+                      label: '✅ Aaj ka',
+                      val: unitPrice,
+                      color: theme.green,
+                      border: theme.greenLight,
+                      bg: theme.greenPaleCard,
+                      big: true,
+                    },
+                    {
+                      label: '⬆ Zyada',
+                      val: priceForUnit(parseFloat(best.max_price), unitObj.kg),
+                      color: theme.green,
+                      border: theme.border,
+                      bg: theme.bgCardAlt,
+                    },
+                  ].map((p) => (
+                    <div
+                      key={p.label}
+                      style={{
+                        background: p.bg,
+                        borderRadius: 14,
+                        padding: '0.8rem 0.4rem',
+                        textAlign: 'center' as const,
+                        borderTop: `4px solid ${p.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: theme.textLight,
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '0.05em',
+                          marginBottom: '0.35rem',
+                        }}
+                      >
+                        {p.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: (p as any).big ? '1.7rem' : '1.3rem',
+                          fontWeight: 900,
+                          color: p.color,
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {p.val}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.65rem',
+                          color: theme.textLight,
+                          marginTop: '0.2rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {unitObj.label}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div style={S.rQuintalNote}>📦 1 Quintal (100kg) = ₹{parseFloat(best.modal_price).toLocaleString('en-IN')}</div>
+                <div
+                  style={{
+                    fontSize: '0.8rem',
+                    color: theme.textLight,
+                    textAlign: 'center' as const,
+                    borderTop: `1px solid ${theme.border}`,
+                    paddingTop: '0.7rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  📦 1 Quintal (100kg) = ₹
+                  {parseFloat(best.modal_price).toLocaleString('en-IN')}
+                </div>
               </div>
 
+              {/* Other mandis */}
               {records.length > 1 && (
-                <div style={S.rMandiCard}>
-                  <div style={S.rMandiTitle}>🏪 Baaki Mandis</div>
+                <div
+                  style={{
+                    background: theme.bgCard,
+                    borderRadius: 22,
+                    padding: '1.25rem',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                    border: `1.5px solid ${theme.border}`,
+                    animation: 'fadeUp 0.4s 0.15s ease both',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      color: theme.green,
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    🏪 Baaki Mandis
+                  </div>
                   {records.slice(0, 6).map((r, i) => (
-                    <div key={i} style={{ ...S.rMandiRow, background: i === 0 ? '#f0faf4' : i % 2 === 0 ? '#fafcf8' : '#fff', borderLeft: i === 0 ? '5px solid #16a34a' : '5px solid #e8f0e4' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {i === 0 && <span style={{ background: '#16a34a', color: '#fff', fontSize: '0.62rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '99px' }}>BEST</span>}
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1b4332' }}>{r.market}</span>
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderRadius: 12,
+                        padding: '0.75rem 0.9rem',
+                        marginBottom: '0.4rem',
+                        background:
+                          i === 0
+                            ? theme.greenPaleCard
+                            : i % 2 === 0
+                              ? theme.bgCardAlt
+                              : theme.bgCard,
+                        borderLeft: `5px solid ${i === 0 ? theme.greenLight : theme.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        {i === 0 && (
+                          <span
+                            style={{
+                              background: theme.greenMid,
+                              color: '#e8f0d4',
+                              fontSize: '0.6rem',
+                              fontWeight: 800,
+                              padding: '0.12rem 0.4rem',
+                              borderRadius: 99,
+                            }}
+                          >
+                            BEST
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: theme.green,
+                          }}
+                        >
+                          {r.market}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: i === 0 ? '#16a34a' : '#2d6a4f' }}>{priceForUnit(parseFloat(r.modal_price), unitObj.kg)}</div>
+                      <div
+                        style={{
+                          fontSize: '1rem',
+                          fontWeight: 900,
+                          color: i === 0 ? theme.greenMid : theme.green,
+                        }}
+                      >
+                        {priceForUnit(parseFloat(r.modal_price), unitObj.kg)}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '1rem' }}>
-              <div style={S.rUnitCard}>
-                <div style={S.rUnitTitle}>🧮 Kitna Bechoge?</div>
-                <div style={S.rUnitGrid}>
+            {/* RIGHT */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column' as const,
+                gap: '1rem',
+              }}
+            >
+              {/* Unit selector */}
+              <div
+                style={{
+                  background: theme.bgCard,
+                  borderRadius: 22,
+                  padding: '1.4rem',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                  border: `1.5px solid ${theme.border}`,
+                  animation: 'fadeUp 0.4s 0.1s ease both',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '1.05rem',
+                    fontWeight: 800,
+                    color: theme.green,
+                    marginBottom: '1rem',
+                  }}
+                >
+                  🧮 Kitna Bechoge?
+                </div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3,1fr)',
+                    gap: '0.5rem',
+                    marginBottom: '1.1rem',
+                  }}
+                >
                   {UNITS.map((u, i) => (
-                    <button key={i} style={{ ...S.rUnitBtn, background: i === unitIdx ? '#1b4332' : '#f3f8f0', color: i === unitIdx ? '#fff' : '#1b4332', borderColor: i === unitIdx ? '#1b4332' : '#c8dfc0', fontWeight: i === unitIdx ? 900 : 600 }} onClick={() => setUnitIdx(i)}>
+                    <button
+                      key={i}
+                      onClick={() => setUnitIdx(i)}
+                      style={{
+                        borderRadius: 12,
+                        padding: '0.6rem 0.3rem',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        border: `2px solid ${i === unitIdx ? theme.green : theme.border}`,
+                        background:
+                          i === unitIdx ? theme.green : theme.bgCardAlt,
+                        color: i === unitIdx ? '#e8f0d4' : theme.green,
+                        fontWeight: i === unitIdx ? 900 : 600,
+                        transition: 'all 0.15s',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
                       {u.label}
                     </button>
                   ))}
                 </div>
-                <div style={S.rUnitResult}>
-                  <div style={S.rUnitResultLabel}>{unitObj.label} bechoge toh milega</div>
-                  <div style={S.rUnitResultPrice}>{unitPrice}</div>
-                  <div style={S.rUnitResultSub}>10 × = {priceForUnit(parseFloat(best.modal_price), unitObj.kg * 10)}</div>
+                <div
+                  style={{
+                    background: theme.greenPaleCard,
+                    borderRadius: 16,
+                    padding: '1.1rem',
+                    textAlign: 'center' as const,
+                    border: `1.5px solid ${theme.border}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: theme.textLight,
+                      textTransform: 'uppercase' as const,
+                      letterSpacing: '0.06em',
+                    }}
+                  >
+                    {unitObj.label} bechoge toh milega
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '3rem',
+                      fontWeight: 900,
+                      color: theme.green,
+                      lineHeight: 1.1,
+                      margin: '0.2rem 0',
+                      letterSpacing: '-0.04em',
+                    }}
+                  >
+                    {unitPrice}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: theme.textLight }}>
+                    10 × ={' '}
+                    {priceForUnit(
+                      parseFloat(best.modal_price),
+                      unitObj.kg * 10,
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div style={S.rActions}>
-                <a href={`https://wa.me/?text=${encodeURIComponent(buildWAMsg(crop, district, best, unitObj.label, unitPrice, advice))}`} target="_blank" rel="noopener noreferrer" style={S.waBtn}>
-                  <span style={{ fontSize: '1.3rem' }}>💬</span> WhatsApp pe bhejo
+              {/* Actions */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  gap: '0.75rem',
+                }}
+              >
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(buildWAMsg(crop, district, best, unitObj.label, unitPrice, advice))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.6rem',
+                    background: '#25d366',
+                    color: '#fff',
+                    padding: '1rem',
+                    borderRadius: 16,
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                    boxShadow: '0 4px 14px rgba(37,211,102,0.22)',
+                  }}
+                >
+                  <span style={{ fontSize: '1.2rem' }}>💬</span> WhatsApp pe
+                  bhejo
                 </a>
-                <button style={S.alertSetupBtn} onClick={() => setStep('alert_setup')}>🔔 Auto Alert Lagao</button>
-                <div style={S.tip}>💡 Bechne se pehle local vyapari se bhi poochho — ye wholesale daam hai.</div>
-                <button style={S.resetBtn} onClick={reset}>🔄 Doosri Fasal Dekho</button>
+                <button
+                  onClick={() => setStep('alert_setup')}
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem',
+                    background: theme.bgCard,
+                    border: `2px solid ${theme.accentDark}`,
+                    color: theme.accentDark,
+                    borderRadius: 16,
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  🔔 Auto Alert Lagao
+                </button>
+                <div
+                  style={{
+                    background: '#f7f5e8',
+                    border: `1.5px solid ${theme.border}`,
+                    borderRadius: 14,
+                    padding: '0.85rem 1rem',
+                    fontSize: '0.875rem',
+                    color: theme.textMid,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  💡 Bechne se pehle local vyapari se bhi poochho — ye wholesale
+                  daam hai.
+                </div>
+                <button
+                  onClick={reset}
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    background: theme.green,
+                    color: '#e8f0d4',
+                    border: 'none',
+                    borderRadius: 16,
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: `0 4px 14px rgba(42,58,20,0.2)`,
+                  }}
+                >
+                  🔄 Doosri Fasal Dekho
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══ ALERT SETUP ══ */}
+      {/* ══════════ ALERT SETUP ══════════ */}
       {step === 'alert_setup' && crop && (
-        <div style={S.container}>
-          <div style={S.alertCard}>
-            <div style={{ fontSize: '3rem', textAlign: 'center' as const }}>🔔</div>
-            <h2 style={S.alertTitle}>Auto Alert Lagao</h2>
-            <p style={S.alertDesc}>Jab bhi <strong>{crop.hindi}</strong> ka bhav {district} mein 5% se zyada upar ya neeche jaye, hum aapko WhatsApp pe turant batayenge.</p>
-            <div style={S.alertFieldWrap}>
-              <label style={S.alertLabel}>Aapka WhatsApp Number</label>
-              <div style={S.phoneRow}>
-                <span style={S.phonePrefix}>+91</span>
-                <input style={S.phoneInput} type="tel" placeholder="10-digit mobile number" maxLength={10} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} />
+        <div
+          style={{
+            padding: '1rem',
+            maxWidth: 480,
+            margin: '0 auto',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              background: theme.bgCard,
+              borderRadius: 20,
+              padding: '1.75rem 1.25rem',
+              marginTop: '0.5rem',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.09)',
+              display: 'flex',
+              flexDirection: 'column' as const,
+              alignItems: 'center',
+              gap: '1rem',
+              border: `1.5px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ fontSize: '3rem', textAlign: 'center' as const }}>
+              🔔
+            </div>
+            <h2
+              style={{
+                fontSize: '1.4rem',
+                fontWeight: 800,
+                color: theme.green,
+                margin: 0,
+              }}
+            >
+              Auto Alert Lagao
+            </h2>
+            <p
+              style={{
+                fontSize: '0.95rem',
+                color: theme.textMid,
+                lineHeight: 1.7,
+                textAlign: 'center' as const,
+                margin: 0,
+              }}
+            >
+              Jab bhi <strong>{crop.hindi}</strong> ka bhav {district} mein 5%
+              se zyada upar ya neeche jaye, hum aapko WhatsApp pe turant
+              batayenge.
+            </p>
+            <div style={{ width: '100%' }}>
+              <label
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: theme.green,
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                Aapka WhatsApp Number
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  border: `2px solid ${theme.border}`,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                }}
+              >
+                <span
+                  style={{
+                    background: theme.greenPaleCard,
+                    padding: '0.8rem 0.75rem',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: theme.green,
+                    borderRight: `2px solid ${theme.border}`,
+                    flexShrink: 0,
+                  }}
+                >
+                  +91
+                </span>
+                <input
+                  style={{
+                    flex: 1,
+                    padding: '0.8rem',
+                    fontSize: '1.1rem',
+                    border: 'none',
+                    outline: 'none',
+                    color: theme.green,
+                    background: theme.bgCard,
+                  }}
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                />
               </div>
             </div>
             {alertSaved ? (
-              <div style={S.alertSuccess}>✅ Alert set ho gaya!<br /><span style={{ fontSize: '0.85rem', fontWeight: 400 }}>Jab {crop.hindi} ka bhav 5%+ badlega, tab WhatsApp pe message ayega.</span></div>
+              <div
+                style={{
+                  background: theme.greenPaleCard,
+                  border: `2px solid ${theme.greenLight}`,
+                  borderRadius: 14,
+                  padding: '1rem',
+                  textAlign: 'center' as const,
+                  fontWeight: 700,
+                  color: theme.green,
+                  lineHeight: 1.6,
+                  width: '100%',
+                }}
+              >
+                ✅ Alert set ho gaya!
+                <br />
+                <span style={{ fontSize: '0.85rem', fontWeight: 400 }}>
+                  Jab {crop.hindi} ka bhav 5%+ badlega, tab WhatsApp pe message
+                  ayega.
+                </span>
+              </div>
             ) : (
-              <button style={{ ...S.greenBtn, opacity: phone.length === 10 ? 1 : 0.5, cursor: phone.length === 10 ? 'pointer' : 'not-allowed' }} onClick={saveAlert} disabled={phone.length !== 10}>🔔 Alert Set Karo</button>
+              <button
+                onClick={saveAlert}
+                disabled={phone.length !== 10}
+                style={{
+                  background: theme.green,
+                  color: '#e8f0d4',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: 14,
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  cursor: phone.length === 10 ? 'pointer' : 'not-allowed',
+                  opacity: phone.length === 10 ? 1 : 0.5,
+                  border: 'none',
+                  width: '100%',
+                }}
+              >
+                🔔 Alert Set Karo
+              </button>
             )}
             {savedAlerts.length > 0 && (
-              <div style={{ marginTop: '1.5rem', width: '100%' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7c6b', textTransform: 'uppercase' as const, marginBottom: '0.5rem' }}>Active Alerts</div>
+              <div style={{ width: '100%', marginTop: '0.5rem' }}>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: theme.textLight,
+                    textTransform: 'uppercase' as const,
+                    marginBottom: '0.5rem',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Active Alerts
+                </div>
                 {savedAlerts.map((a, i) => (
-                  <div key={i} style={S.savedAlertRow}>
-                    <span>{a.cropEmoji} {a.cropHindi} — {a.district}</span>
-                    <button style={S.removeBtn} onClick={() => {
-                      const updated = savedAlerts.filter((_, j) => j !== i)
-                      setSavedAlerts(updated)
-                      try { localStorage.setItem('km_alerts', JSON.stringify(updated)) } catch {}
-                    }}>✕</button>
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: theme.greenPaleCard,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      padding: '0.65rem 0.85rem',
+                      marginBottom: '0.4rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: theme.green,
+                    }}
+                  >
+                    <span>
+                      {a.cropEmoji} {a.cropHindi} — {a.district}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const updated = savedAlerts.filter((_, j) => j !== i)
+                        setSavedAlerts(updated)
+                        try {
+                          localStorage.setItem(
+                            'km_alerts',
+                            JSON.stringify(updated),
+                          )
+                        } catch {}
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#7a2e2e',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                      }}
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
             )}
-            <button style={S.outlineBtn} onClick={() => setStep('result')}>← Wapas Jao</button>
+            <button
+              onClick={() => setStep('result')}
+              style={{
+                background: theme.bgCard,
+                border: `2px solid ${theme.greenMid}`,
+                color: theme.greenMid,
+                padding: '0.85rem',
+                borderRadius: 14,
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              ← Wapas Jao
+            </button>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes spin       { to{transform:rotate(360deg)} }
-        @keyframes fadeUp     { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes floatDrift { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-        @keyframes ticker     { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-        @media(max-width:900px){
-          .heroSplit{grid-template-columns:1fr!important;min-height:auto!important}
-          .heroRight{display:none!important}
-          .cropGridFull{grid-template-columns:repeat(2,1fr)!important}
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        @media (max-width: 700px) {
+          .result-grid { grid-template-columns: 1fr !important; }
         }
-        @media(max-width:700px){ .resultGrid-r{grid-template-columns:1fr !important} }
       `}</style>
     </div>
   )
-}
-
-// ─────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────
-const S: Record<string, React.CSSProperties> = {
-  pageWrap: {
-    minHeight: '100vh',
-    position: 'relative' as const,
-    fontFamily: "'Segoe UI',system-ui,sans-serif",
-    paddingBottom: '4rem',
-  },
-
-  /* ── TOP BAR: orange sticky bar with scrolling ticker ── */
-  topBar: {
-    width: '100%',
-    height: '44px',
-    overflow: 'hidden',
-    background: 'linear-gradient(90deg, #c2410c 0%, #ea580c 40%, #f97316 70%, #fb923c 100%)',
-    borderBottom: '1px solid rgba(255,255,255,0.18)',
-    display: 'flex',
-    alignItems: 'center',
-    position: 'sticky' as const,
-    top: 0,
-    zIndex: 100,
-    boxShadow: '0 3px 18px rgba(234,88,12,0.45)',
-  },
-  backBtn: {
-    background: 'rgba(0,0,0,0.22)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    color: '#fff',
-    borderRadius: '10px',
-    padding: '0.3rem 0.8rem',
-    fontSize: '0.82rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-    marginLeft: '0.75rem',
-    flexShrink: 0,
-    whiteSpace: 'nowrap' as const,
-    lineHeight: 1,
-  },
-
-  /* CurvedLoop fills remaining width — no scale hack, same as homepage */
-  topMarqueeWrap: {
-    flex: 1,
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-
-  /* Two copies of the text side-by-side; CSS animation scrolls the pair left by 50% */
-  tickerTrack: {
-    display: 'flex',
-    whiteSpace: 'nowrap' as const,
-    animation: 'ticker 28s linear infinite',
-    willChange: 'transform',
-  },
-  tickerText: {
-    display: 'inline-block',
-    fontFamily: "'Bebas Neue', 'DM Sans', sans-serif",
-    fontSize: '1rem',
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    color: '#ffffff',
-    textShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    paddingRight: '2rem',
-  },
-
-  container: {
-    padding: '1rem',
-    maxWidth: 520,
-    margin: '0 auto',
-    position: 'relative' as const,
-    zIndex: 1,
-  },
-
-  heroSplit: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    alignItems: 'center',
-    gap: '3rem',
-    padding: '4rem 5vw 3rem',
-    minHeight: '45vh',
-    animation: 'fadeUp 0.6s ease both',
-  },
-  heroLeft: { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' },
-  heroBadge: {
-    display: 'inline-block',
-    background: 'rgba(0,0,0,0.4)',
-    border: '1px solid rgba(255,255,255,0.35)',
-    color: '#fff',
-    fontSize: '0.88rem',
-    fontWeight: 700,
-    padding: '0.4rem 1.1rem',
-    borderRadius: '99px',
-    letterSpacing: '0.04em',
-    alignSelf: 'flex-start',
-  },
-  heroTitle: {
-    fontSize: 'clamp(2.8rem,5vw,4.5rem)',
-    fontWeight: 900,
-    color: '#fff',
-    lineHeight: 1.05,
-    margin: 0,
-    letterSpacing: '-0.04em',
-  },
-  heroAccent: { color: '#f4a261' },
-  heroDesc: { fontSize: '1.1rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.75, margin: 0 },
-  pillRow: { display: 'flex', gap: '0.65rem', flexWrap: 'wrap' as const },
-  heroPill: {
-    background: 'rgba(0,0,0,0.38)',
-    border: '1px solid rgba(255,255,255,0.32)',
-    color: '#fff',
-    fontSize: '0.88rem',
-    fontWeight: 700,
-    padding: '0.45rem 1.1rem',
-    borderRadius: '99px',
-  },
-
-  cropGridFull: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4,1fr)',
-    gap: '1.1rem',
-    padding: '0 5vw',
-  },
-  cropCardFull: {
-    position: 'relative' as const,
-    background: 'rgba(244, 162, 97, 0.18)',
-    border: '2px solid rgba(244, 162, 97, 0.35)',
-    borderRadius: '22px',
-    padding: '1.75rem 0.75rem 1.25rem',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: '0.4rem',
-    cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(244, 162, 97, 0.15)',
-    WebkitTapHighlightColor: 'transparent',
-    animation: 'fadeUp 0.5s ease both',
-    transition: 'transform 0.15s, background 0.15s',
-  },
-  cropArrowNew: { position: 'absolute' as const, top: '0.8rem', right: '1rem', fontSize: '1.1rem', color: 'rgba(255,255,255,0.35)', fontWeight: 700 },
-  cropEmojiNew: { fontSize: '3.4rem', lineHeight: 1, filter: 'drop-shadow(1px 3px 8px rgba(0,0,0,0.3))', marginBottom: '0.2rem' },
-  cropHindiNew: { fontSize: '1.1rem', fontWeight: 900, color: '#000', letterSpacing: '-0.01em' },
-  cropOdiaNew: { fontSize: '0.85rem', color: '#000', fontWeight: 500 },
-
-  bottomTip: {
-    margin: '1.5rem 5vw 0',
-    padding: '1rem 1.4rem',
-    background: 'rgba(0,0,0,0.4)',
-    border: '1px solid rgba(255,255,255,0.18)',
-    borderRadius: '16px',
-    fontSize: '0.92rem',
-    color: 'rgba(255,255,255,0.92)',
-    lineHeight: 1.6,
-  },
-
-  distHeader: { position: 'relative' as const, zIndex: 1, textAlign: 'center' as const, padding: '2.5rem 1.5rem 1.5rem', animation: 'fadeUp 0.5s ease both' },
-  distCropBadge: { display: 'inline-block', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: '0.85rem', fontWeight: 800, padding: '0.3rem 1rem', borderRadius: '99px', marginBottom: '0.75rem', letterSpacing: '0.04em' },
-  distTitle: { fontSize: 'clamp(2rem,4.5vw,3rem)', fontWeight: 900, color: '#fff', margin: '0 0 0.4rem', letterSpacing: '-0.03em' },
-  distSubtitle: { fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', margin: 0 },
-  distGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem', padding: '0 1.5rem', maxWidth: 960, margin: '0 auto' },
-  distCard: { position: 'relative' as const, background: 'rgba(0,0,0,0.45)', border: '2px solid rgba(255,255,255,0.22)', borderRadius: '18px', padding: '1.1rem 1rem 0.9rem', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start', gap: '0.2rem', cursor: 'pointer', textAlign: 'left' as const, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', WebkitTapHighlightColor: 'transparent', animation: 'fadeUp 0.45s ease both', transition: 'transform 0.15s' },
-  distCardIcon: { fontSize: '2rem', lineHeight: 1, marginBottom: '0.2rem', filter: 'drop-shadow(1px 2px 4px rgba(0,0,0,0.3))' },
-  distCardName: { fontSize: '1.05rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' },
-  distCardTag: { fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
-  distCardArrow: { position: 'absolute' as const, top: '0.85rem', right: '0.9rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.35)', fontWeight: 700 },
-
-  centered: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' },
-  spinner: { width: 56, height: 56, borderRadius: '50%', border: '6px solid #e2eed8', borderTop: '6px solid #2d6a4f', animation: 'spin 0.85s linear infinite' },
-  errorCard: { background: '#fff', borderRadius: '20px', padding: '2rem 1.5rem', marginTop: '1rem', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', textAlign: 'center' as const },
-  errIcon: { fontSize: '3rem' },
-  errT: { fontSize: '1.2rem', fontWeight: 800, color: '#1b4332', margin: 0 },
-  errB: { fontSize: '0.95rem', color: '#4b5563', lineHeight: 1.7, margin: 0 },
-  greenBtn: { background: '#2d6a4f', color: '#fff', padding: '0.85rem 1.5rem', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', display: 'block', width: '100%', textAlign: 'center' as const, border: 'none', cursor: 'pointer' },
-  outlineBtn: { background: '#fff', border: '2px solid #2d6a4f', color: '#2d6a4f', padding: '0.85rem', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', width: '100%' },
-
-  resultPage: { position: 'relative' as const, zIndex: 1, padding: '1rem 1.5rem 3rem', maxWidth: 1100, margin: '0 auto' },
-  resultGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginTop: '1rem' },
-  rAdvice: { borderRadius: '20px', padding: '1.25rem 1.75rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '1.25rem', animation: 'fadeUp 0.3s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' },
-  rAdviceTitle: { fontSize: '1.7rem', fontWeight: 900, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.02em' },
-  rAdviceSub: { fontSize: '0.92rem', color: 'rgba(255,255,255,0.92)', marginTop: '0.3rem', fontWeight: 500 },
-  rActions: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' },
-  rHeroPrice: { background: '#fff', borderRadius: '22px', padding: '1.4rem', marginBottom: '1rem', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', animation: 'fadeUp 0.4s 0.05s ease both' },
-  rCropName: { fontSize: '1.15rem', fontWeight: 900, color: '#1b4332' },
-  rCropLoc: { fontSize: '0.82rem', color: '#6b7c6b', marginTop: '0.15rem' },
-  rPriceRow: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', marginBottom: '0.85rem', alignItems: 'end' },
-  rPriceBox: { background: '#f8faf5', borderRadius: '16px', padding: '0.85rem 0.5rem', textAlign: 'center' as const, transition: 'transform 0.15s' },
-  rPriceBoxLabel: { fontSize: '0.72rem', fontWeight: 700, color: '#6b7c6b', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: '0.4rem' },
-  rPriceVal: { fontSize: '1.45rem', fontWeight: 900, lineHeight: 1.1 },
-  rPriceUnit: { fontSize: '0.68rem', color: '#9ca3af', marginTop: '0.25rem', fontWeight: 600 },
-  rQuintalNote: { fontSize: '0.8rem', color: '#6b7c6b', textAlign: 'center' as const, borderTop: '1px solid #e8f0e4', paddingTop: '0.75rem', fontWeight: 600 },
-  rUnitCard: { background: '#fff', borderRadius: '22px', padding: '1.4rem', marginBottom: '1rem', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', animation: 'fadeUp 0.4s 0.1s ease both' },
-  rUnitTitle: { fontSize: '1.05rem', fontWeight: 900, color: '#1b4332', marginBottom: '1rem' },
-  rUnitGrid: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.5rem', marginBottom: '1.1rem' },
-  rUnitBtn: { borderRadius: '12px', padding: '0.65rem 0.3rem', fontSize: '0.88rem', cursor: 'pointer', border: '2px solid', transition: 'transform 0.12s', WebkitTapHighlightColor: 'transparent' },
-  rUnitResult: { background: '#f0faf4', borderRadius: '16px', padding: '1.1rem', textAlign: 'center' as const },
-  rUnitResultLabel: { fontSize: '0.78rem', fontWeight: 700, color: '#6b7c6b', textTransform: 'uppercase' as const, letterSpacing: '0.06em' },
-  rUnitResultPrice: { fontSize: '3.2rem', fontWeight: 900, color: '#1b4332', lineHeight: 1.1, margin: '0.2rem 0', letterSpacing: '-0.04em' },
-  rUnitResultSub: { fontSize: '0.85rem', color: '#6b7c6b' },
-  rMandiCard: { background: '#fff', borderRadius: '22px', padding: '1.25rem', marginBottom: '1rem', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', animation: 'fadeUp 0.4s 0.15s ease both' },
-  rMandiTitle: { fontSize: '1rem', fontWeight: 800, color: '#1b4332', marginBottom: '0.75rem' },
-  rMandiRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px', padding: '0.8rem 1rem', marginBottom: '0.4rem' },
-  waBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: '#25d366', color: '#fff', padding: '1rem', borderRadius: '16px', fontSize: '1.05rem', fontWeight: 800, textDecoration: 'none', marginBottom: '0.75rem', boxShadow: '0 4px 14px rgba(37,211,102,0.3)' },
-  alertSetupBtn: { width: '100%', padding: '0.9rem', background: '#fff', border: '2px solid #f59e0b', color: '#92400e', borderRadius: '16px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' } as React.CSSProperties,
-  tip: { background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '0.85rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.65rem', marginBottom: '1rem', fontSize: '0.875rem', color: '#92400e', lineHeight: 1.6 },
-  resetBtn: { width: '100%', padding: '1rem', background: '#2d6a4f', color: '#fff', border: 'none', borderRadius: '16px', fontSize: '1.05rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 14px rgba(45,106,79,0.25)' },
-  alertCard: { background: '#fff', borderRadius: '20px', padding: '1.75rem 1.25rem', marginTop: '0.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '1rem' },
-  alertTitle: { fontSize: '1.4rem', fontWeight: 800, color: '#1b4332', margin: 0 },
-  alertDesc: { fontSize: '0.95rem', color: '#4b5563', lineHeight: 1.7, textAlign: 'center' as const, margin: 0 },
-  alertFieldWrap: { width: '100%' },
-  alertLabel: { fontSize: '0.85rem', fontWeight: 700, color: '#1b4332', display: 'block', marginBottom: '0.5rem' },
-  phoneRow: { display: 'flex', alignItems: 'center', border: '2px solid #e2eed8', borderRadius: '12px', overflow: 'hidden' },
-  phonePrefix: { background: '#f3f8f3', padding: '0.8rem 0.75rem', fontSize: '1rem', fontWeight: 700, color: '#1b4332', borderRight: '2px solid #e2eed8', flexShrink: 0 },
-  phoneInput: { flex: 1, padding: '0.8rem', fontSize: '1.1rem', border: 'none', outline: 'none', color: '#1b4332' },
-  alertSuccess: { background: '#dcfce7', border: '2px solid #86efac', borderRadius: '14px', padding: '1rem', textAlign: 'center' as const, fontWeight: 700, color: '#16a34a', lineHeight: 1.6, width: '100%' },
-  savedAlertRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f3f8f3', borderRadius: '10px', padding: '0.65rem 0.85rem', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: 600, color: '#1b4332', width: '100%' },
-  removeBtn: { background: 'none', border: 'none', color: '#dc2626', fontWeight: 800, cursor: 'pointer', fontSize: '1rem' },
 }

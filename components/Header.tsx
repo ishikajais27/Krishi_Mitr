@@ -10,7 +10,7 @@ const NAV = [
   { href: '/livestock', label: 'Livestock', icon: '🐄' },
   { href: '/crop', label: 'Crop Doctor', icon: '🌾' },
   { href: '/marketprice', label: 'Mandi Bhav', icon: '📈' },
-  { href: '/mindpulse', label: 'Mind Pulse', icon: '🧠' },
+  { href: '/mindpulse', label: 'Kisan Sahayak', icon: '🫂' },
   { href: '/contact', label: 'Contact', icon: '✉️' },
 ]
 
