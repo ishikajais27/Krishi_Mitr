@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ML_BASE = 'https://krishimitra-ml-knuh.onrender.com'
-
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
@@ -12,9 +10,9 @@ export async function POST(req: NextRequest) {
     }
 
     const upstream = new FormData()
-    upstream.append('file', file)
+    upstream.append('image', file) // their API uses "image"
 
-    const mlRes = await fetch(`${ML_BASE}/livestock/diagnose`, {
+    const mlRes = await fetch('https://livestock-doc.vercel.app/api/analyze', {
       method: 'POST',
       body: upstream,
     })
@@ -22,13 +20,13 @@ export async function POST(req: NextRequest) {
     if (!mlRes.ok) {
       const errText = await mlRes.text()
       return NextResponse.json(
-        { error: `ML backend error: ${mlRes.status}`, detail: errText },
+        { error: `Upstream error: ${mlRes.status}`, detail: errText },
         { status: mlRes.status },
       )
     }
 
     const data = await mlRes.json()
-    return NextResponse.json(data)
+    return NextResponse.json(data) // pass through raw
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
